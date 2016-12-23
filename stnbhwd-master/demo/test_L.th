@@ -1,0 +1,413 @@
+npy4th=require 'npy4th';
+
+
+function _U_func(x1,y1,x2,y2)
+
+    -- # Return zero if same point
+    local ans;
+    if x1 == x2 and y1 == y2 then
+        ans= 0;
+    else
+      ans = (x2 - x1)^2 + (y2 - y1)^2
+      ans = ans * torch.log(ans) 
+    end
+
+    if 'inf'==''..ans or 'nan'==''..ans then
+      ans=0;
+    end
+    
+    return ans;
+end
+
+function stage_1()
+
+  num_control_points=16;
+  local height=torch.sqrt(num_control_points);
+  local width=height;
+
+  baseGrid = torch.Tensor(height, width, 3)
+
+  for i=1,height do
+    baseGrid:select(3,1):select(1,i):fill(-1 + (i-1)/(height-1) * 2)
+  end
+  for j=1,width do
+    baseGrid:select(3,2):select(2,j):fill(-1 + (j-1)/(width-1) * 2)
+  end
+  baseGrid:select(3,3):fill(1)
+  -- print (baseGrid)
+
+  batchGrid = torch.Tensor(1, height, width, 3):copy(baseGrid)
+
+  local num_equations = num_control_points + 3
+  local L = torch.zeros(num_equations, num_equations)
+
+  baseGrid_t=baseGrid:resize(num_control_points,3);
+
+  baseGrid_t=baseGrid_t[{{},{1,2}}]
+  L[{{2,3},{4,L:size(2)}}]=baseGrid_t:t()
+  L[{1, {4,L:size(2)}}]=1
+
+  L[{{4,L:size(2)},{2,3}}]=baseGrid_t
+  L[{{4,L:size(2)},1}]=1
+
+  for point_1=1,num_control_points do
+    for point_2=point_1,num_control_points do
+      L[{point_1+3,point_2+3}]=_U_func(baseGrid_t[{point_1,1}],baseGrid_t[{point_1,2}],baseGrid_t[{point_2,1}],baseGrid_t[{point_2,2}]);
+      if point_1 ~= point_2 then
+        L[{point_2+3,point_1+3}]=L[{point_1+3,point_2+3}]
+      end
+    end
+  end
+
+  local L_inv=torch.inverse(L);
+  -- print (L_inv);
+  -- print (L);
+  local out_file_L='L.npy';
+  local out_file_L_inv='L_inv.npy';
+  npy4th.savenpy(out_file_L,L);
+  npy4th.savenpy(out_file_L_inv,L_inv);
+
+
+  local out_height=20;
+  local out_width=20;
+  orig_grid=torch.zeros(out_height,out_width,3);
+  for i=1,out_height do
+    orig_grid:select(3,1):select(1,i):fill(-1 + (i-1)/(out_height-1) * 2)
+  end
+  for j=1,out_width do
+    orig_grid:select(3,2):select(2,j):fill(-1 + (j-1)/(out_width-1) * 2)
+  end
+  orig_grid:select(3,3):fill(1)
+  -- print (orig_grid)
+
+  orig_grid=orig_grid:resize(out_height*out_width,3);
+  orig_grid=orig_grid[{{},{1,2}}]:t();
+  print (orig_grid:size());
+  print (orig_grid[{{},{1,10}}])
+  local source_pts=baseGrid_t:t();
+
+  local distances =torch.zeros(source_pts:size(2),orig_grid:size(2));
+  print (distances:size())
+  for ps_idx=1,source_pts:size(2) do
+    for po_idx=1,orig_grid:size(2) do
+      distances[{ps_idx,po_idx}]=_U_func(source_pts[{1,ps_idx}],source_pts[{2,ps_idx}],orig_grid[{1,po_idx}],orig_grid[{2,po_idx}]);
+    end
+  end
+
+  local upper_array=torch.ones(1,orig_grid:size(2));
+  upper_array=torch.cat({upper_array,orig_grid},1);
+  local right_mat=torch.cat({upper_array,distances},1);
+  print (upper_array:size())
+  print (right_mat:size());
+
+  local out_file_L='right_array.npy';
+  local out_file_L_inv='upper_array.npy';
+  npy4th.savenpy(out_file_L,right_mat);
+  npy4th.savenpy(out_file_L_inv,upper_array);
+
+  -- print (L_inv[{{},{4,L_inv:size(2)}}]:t():size());
+  -- print (right_mat:size());
+  -- local A = L_inv[{{},{4,L_inv:size(2)}}]:t()*right_mat;
+  -- print ('A',A:size());
+
+  -- local out_file_L_inv='upper_array.npy';
+  -- npy4th.savenpy(out_file_L,right_mat);
+
+
+
+end
+
+
+
+function stage_1_dummy(num_control_points,baseGrid_t)
+
+
+  local num_equations = num_control_points + 3
+  local L = torch.zeros(num_equations, num_equations)
+
+  -- baseGrid_t=baseGrid:resize(num_control_points,3);
+
+  -- baseGrid_t=baseGrid_t[{{},{1,2}}]
+  L[{{2,3},{4,L:size(2)}}]=baseGrid_t:t()
+  L[{1, {4,L:size(2)}}]=1
+
+  L[{{4,L:size(2)},{2,3}}]=baseGrid_t
+  L[{{4,L:size(2)},1}]=1
+
+  for point_1=1,num_control_points do
+    for point_2=point_1,num_control_points do
+      L[{point_1+3,point_2+3}]=_U_func(baseGrid_t[{point_1,1}],baseGrid_t[{point_1,2}],baseGrid_t[{point_2,1}],baseGrid_t[{point_2,2}]);
+      if point_1 ~= point_2 then
+        L[{point_2+3,point_1+3}]=L[{point_1+3,point_2+3}]
+      end
+    end
+  end
+
+  local L_inv=torch.inverse(L);
+
+  local out_height=32;
+  local out_width=32;
+  orig_grid=torch.zeros(out_height,out_width,3);
+  for i=1,out_height do
+    orig_grid:select(3,1):select(1,i):fill(-1 + (i-1)/(out_height-1) * 2)
+  end
+  for j=1,out_width do
+    orig_grid:select(3,2):select(2,j):fill(-1 + (j-1)/(out_width-1) * 2)
+  end
+  orig_grid:select(3,3):fill(1)
+  -- print (orig_grid)
+
+  orig_grid=orig_grid:resize(out_height*out_width,3);
+  orig_grid=orig_grid[{{},{1,2}}]:t();
+  print (orig_grid:size());
+  print (orig_grid[{{},{1,10}}])
+  local source_pts=baseGrid_t:t();
+
+  local distances =torch.zeros(source_pts:size(2),orig_grid:size(2));
+  print (distances:size())
+  for ps_idx=1,source_pts:size(2) do
+    for po_idx=1,orig_grid:size(2) do
+      distances[{ps_idx,po_idx}]=_U_func(source_pts[{1,ps_idx}],source_pts[{2,ps_idx}],orig_grid[{1,po_idx}],orig_grid[{2,po_idx}]);
+    end
+  end
+
+  local upper_array=torch.ones(1,orig_grid:size(2));
+  upper_array=torch.cat({upper_array,orig_grid},1);
+  local right_mat=torch.cat({upper_array,distances},1);
+  
+  local A = L_inv[{{},{4,L_inv:size(2)}}]:t()*right_mat;
+  return A;
+
+end
+
+
+
+
+function stage_2();
+  local height=4;
+  local width=4;
+  local num_ctrl_pts=16;
+  local out_width=20;
+  local out_height=20;
+
+  local baseGrid = npy4th.loadnpy('baseGrid.npy')
+  local batchGrid = npy4th.loadnpy('batchGrid.npy')
+  local right_mat = npy4th.loadnpy('right_mat.npy')
+  local L_inv = npy4th.loadnpy('L_inv.npy')
+  local source_points = npy4th.loadnpy('source_points.npy')
+  print ('hello');
+  -- print (right_mat:size())
+  dest_offsets=npy4th.loadnpy('dest_offsets.npy');
+  print (dest_offsets:size());
+
+  A=npy4th.loadnpy('A.npy');
+  output = _transform_thin_plate_spline(dest_offsets,A,source_points,out_width,out_height);
+  
+ 
+  -- t_x=output:select(4,2):clone();
+  -- print (t_x:size())
+  -- t_x=t_x:resize(t_x:nElement())
+  -- t_y=output:select(4,1):clone();
+  -- t_y=t_y:resize(t_y:nElement())
+  -- print (t_x:size(),t_y:size());
+
+  -- local grad_grid=torch.rand(output:nElement());
+  -- grad_grid=grad_grid:resize(output:size());
+  -- npy4th.savenpy('grad_grid.npy',grad_grid);
+  -- local grad_grid=npy4th.loadnpy('grad_grid.npy');
+  -- print (grad_grid:size());
+  print (output:size());
+
+  getDerivatives(grad_grid,A);
+  -- npy4th.savenpy('t_x.npy',t_x);
+  -- npy4th.savenpy('t_y.npy',t_y);
+  -- print ('saved')
+
+end
+
+
+function getDerivatives(grad_grid,A) 
+  local y = grad_grid:select(4,1):clone();
+  local x = grad_grid:select(4,2):clone();
+  y = y:view(y:size(1),y:size(2)*y:size(3));
+  x = x:view(x:size(1),x:size(2)*x:size(3));
+  -- print ('y:size()')
+  -- print ('x:size()')
+
+  -- print (y:size())
+  -- print (x:size())
+
+  -- local idx=10;
+  -- y_a=y[10]:clone();
+  -- y_org=grad_grid[10]:select(3,1):clone();
+  -- y_org=y_org:view(y_org:nElement());
+  -- print (y_a:size());
+  -- print (y_org:size());
+  -- print (torch.all(torch.eq(y_a,y_org)));
+
+  local grad_grid_rs=torch.cat(x,y,3);
+  -- print (grad_grid_rs:size())
+  -- print (A:size());
+
+  local A_rep=A:resize(1,A:size(1),A:size(2)):repeatTensor(grad_grid_rs:size(1),1,1);
+  -- print (A_rep:size());
+  -- print (torch.all(torch.eq(A_rep[idx],A)));
+
+  -- local grad_input=torch.zeros(A_rep:size(1),A_rep:size(2),grad_grid_rs:size(3));
+  local grad_input=torch.bmm(A_rep,grad_grid_rs);
+  local grad_input_org=grad_input:clone();
+  idx=10;
+  local g_c=grad_input_org:select(1,idx):clone();
+  print (g_c);
+  -- print (grad_input:size())
+  -- local x=torch.bmm(A_rep,grad_grid_rs);
+  -- print (x:size());
+  -- print (torch.all(torch.eq(x,grad_input)));
+  grad_input=grad_input:transpose(2,3);
+  print (grad_input:size())
+  grad_input=grad_input:resize(grad_input:size(1),2*grad_input:size(3));
+  print (grad_input:size());
+  print (grad_input:select(1,idx))
+
+
+end
+
+function _transform_thin_plate_spline(dest_offsets, A,source_points,out_width,out_height)
+  -- right_mat, L_inv, source_points, out_height,
+  --     out_width)
+  local num_control_points = source_points:size(2)
+  local num_batch=dest_offsets:size(1);
+  local dest_offsets=dest_offsets:resize(torch.LongStorage{num_batch,2,num_control_points});
+  local dest_points=torch.zeros(dest_offsets:size())
+  
+  for i=1,num_batch do
+    dest_points[i]=source_points+dest_offsets[i];
+  end
+
+  -- print (L_inv[{{},{4,L_inv:size(2)}}]:t():size());
+  -- print (right_mat:size());
+  -- local A = L_inv[{{},{4,L_inv:size(2)}}]:t()*right_mat;
+  -- print ('A',A:size());
+
+  -- local l_rep=torch.repeatTensor(L_inv[{{},{4,L_inv:size(2)}}]:t(),dest_points:size(1),1,1);
+  -- local coefficients = torch.bmm(dest_points,l_rep )
+  -- local right_mat=torch.view(right_mat,torch.LongStorage{1,right_mat:size(1),right_mat:size(2)});
+  -- local right_mat=torch.repeatTensor(right_mat,coefficients:size(1),1,1);
+  -- local transformed_points=torch.bmm(coefficients,right_mat);
+
+  local transformed_points=torch.bmm(dest_points,torch.repeatTensor(A,dest_points:size(1),1,1));
+  -- print (transformed_points:size());
+
+  local x_t_all=torch.zeros(transformed_points:size(1),out_height,out_width);
+  local y_t_all=torch.zeros(transformed_points:size(1),out_height,out_width);
+  for idx=1,transformed_points:size(1) do
+    x_t_all[idx]=transformed_points[idx][1]:resize(out_height,out_width);
+    y_t_all[idx]=transformed_points[idx][2]:resize(out_height,out_width);
+  end
+
+  local output=torch.cat(x_t_all,y_t_all,4);
+  
+  return output;
+  -- x_t_all:view(x_t_all:nElement()),y_t_all:view(y_t_all:nElement()),
+  -- x_transformed,y_transformed,output 
+  -- 
+
+end
+
+-- stage_2();
+
+
+
+-- num_control_points=16;
+-- local height=torch.sqrt(num_control_points);
+-- local width=height;
+
+-- baseGrid = torch.Tensor(height, width, 2)
+
+-- for i=1,height do
+--   baseGrid:select(3,1):select(1,i):fill(-1 + (i-1)/(height-1) * 2)
+-- end
+-- for j=1,width do
+--   baseGrid:select(3,2):select(2,j):fill(-1 + (j-1)/(width-1) * 2)
+-- end
+
+-- baseGrid_t=baseGrid:resize(num_control_points,2);
+
+-- -- baseGrid_t=baseGrid_t[{{},{1,2}}]
+-- print (baseGrid_t:size());
+-- npy4th.savenpy('neg_pos_grid.npy',baseGrid_t);
+
+
+out_width=32;
+out_height=32;
+-- source_points=npy4th.loadnpy('dummy_source.npy');
+-- dest_offsets=npy4th.loadnpy('dummy_offsets.npy');
+source_points=npy4th.loadnpy('dummy_source_trans.npy');
+dest_offsets=npy4th.loadnpy('dummy_dest_trans.npy');
+
+dest_offsets=dest_offsets*-1;
+
+print (source_points:size())
+print (dest_offsets:size())
+
+num_control_points=16;
+baseGrid_t=source_points:t():clone()
+
+-- -- baseGrid_t=
+local A=stage_1_dummy(num_control_points,baseGrid_t);
+print (A:size())
+local out_grid= _transform_thin_plate_spline(dest_offsets, A,source_points,out_width,out_height)
+print (out_grid:size());
+npy4th.savenpy('dummy_grids_trans.npy',out_grid);
+
+
+-- if precompute_grid:
+--         # Construct grid
+--         out_height = np.array(height / downsample_factor[0]).astype('int64')
+--         out_width = np.array(width / downsample_factor[1]).astype('int64')
+--         x_t, y_t = np.meshgrid(np.linspace(-1, 1, out_width),
+--                                np.linspace(-1, 1, out_height))
+--         ones = np.ones(np.prod(x_t.shape))
+--         orig_grid = np.vstack([x_t.flatten(), y_t.flatten(), ones])
+--         orig_grid = orig_grid[0:2, :]
+--         orig_grid = orig_grid.astype(theano.config.floatX)
+
+--         # Construct right mat
+
+--         # First Calculate the U function for the new point and each source
+--         # point as in ref [2]
+--         # The U function is simply U(r) = r^2 * log(r^2), where r^2 is the
+--         # squared distance
+--         to_transform = orig_grid[:, :, np.newaxis].transpose(2, 0, 1)
+--         stacked_transform = np.tile(to_transform, (num_control_points, 1, 1))
+--         stacked_source_points = \
+--             source_points[:, :, np.newaxis].transpose(1, 0, 2)
+--         r_2 = np.sum((stacked_transform - stacked_source_points) ** 2, axis=1)
+
+--         # Take the product (r^2 * log(r^2)), being careful to avoid NaNs
+--         log_r_2 = np.log(r_2)
+--         log_r_2[np.isinf(log_r_2)] = 0.
+--         distances = r_2 * log_r_2
+
+--         # Add in the coefficients for the affine translation (1, x, and y,
+--         # corresponding to a_1, a_x, and a_y)
+--         upper_array = np.ones(shape=(1, orig_grid.shape[1]),
+--                               dtype=theano.config.floatX)
+--         upper_array = np.concatenate([upper_array, orig_grid], axis=0)
+--         right_mat = np.concatenate([upper_array, distances], axis=0)
+
+--         # Convert to tensors
+--         out_height = T.as_tensor_variable(out_height)
+--         out_width = T.as_tensor_variable(out_width)
+--         right_mat = T.as_tensor_variable(right_mat)
+
+--     else:
+--         out_height = None
+--         out_width = None
+--         right_mat = None
+
+--     # Convert to tensors
+--     L_inv = T.as_tensor_variable(L_inv)
+--     source_points = T.as_tensor_variable(source_points)
+
+--     return right_mat, L_inv, source_points, out_height, out_width

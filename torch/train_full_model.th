@@ -14,6 +14,7 @@ dump=require 'dump';
 tps_helper=require 'tps_helper';
 visualize=require 'visualize';
 loss_helper=require 'loss_helper';
+forward_helper=require 'forward_helper';
 
 function getOptimStateTotal(params,parameters,layer_pivot,logger)
     local optimStateTotal={}
@@ -77,80 +78,6 @@ function createIntegratedModel(tps_model_path,face_detection_model,full_model_fl
     return tot_net;
 end
 
-function forward(td,net,inputs,batch_targets,saveImage,euclideanLoss,mean_im,std_im)
-    local batch_inputs_view;
-    if saveImage then
-        batch_inputs_view=inputs:double():clone();
-    end  
-
-    local midoutputs=net:get(1):forward(inputs);
-
-    local midoutputs_view;
-    if saveImage then
-        midoutputs_view=midoutputs:double():clone();
-    end
-
-    if mean_im then
-        assert (std_im);
-        midoutputs=tps_helper:switchMeans_withMeanStd(midoutputs,td.params.imagenet_mean,mean_im,std_im)
-    else
-        midoutputs=tps_helper:switchMeans(midoutputs,td.params.imagenet_mean,td.mean_im,td.std_im)
-    end
-
-    local outputs=net:get(2):forward(midoutputs);
-    
-    local tps_layer= net:get(1):get(1):get(2);
-    tps_layer=tps_layer:get(#tps_layer);
-    
-
-    local t_pts=tps_helper:getPointsOriginalImage(outputs,tps_layer.output)
-
-    if saveImage then
-        local outputs_view=outputs:view(outputs:size(1),outputs:size(2)/2,2):clone();
-        local t_pts_view=t_pts:view(t_pts:size(1),t_pts:size(2)/2,2):clone();
-        local colors={{0,255,0}};
-        local pointSize=10;  
-        t_pts_view=t_pts_view:transpose(2,3)
-        for im_num=1,t_pts:size(1) do 
-            local out_file_gt=saveImage..im_num..'_gt_pts.npy';
-            local out_file_pred=saveImage..im_num..'_pred_pts.npy';
-
-            local pred_output=t_pts[im_num]:clone():double();
-            local gt_output=batch_targets[im_num]:clone():double();
-            pred_output=pred_output:view(pred_output:size(1)/2,2);
-            npy4th.savenpy(out_file_gt,gt_output);
-            npy4th.savenpy(out_file_pred,pred_output);
-
-        end
-
-        local binary=batch_targets[{{},{},3}]:clone();
-
-        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary);
-
-        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},nil,{-1,1},colors,pointSize,binary);
-
-        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary);
-
-        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org_nokp.jpg'},nil,{-1,1},colors,-1,binary);
-
-        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp_nokp.jpg'},nil,{-1,1},colors,-1,binary);
-    end
-
-    local loss;
-    local dloss;
-
-    if euclideanLoss then
-        loss, loss_all = loss_helper:getLoss_Euclidean(t_pts,batch_targets);
-        dloss=loss_all;
-    else
-        dloss = loss_helper:getLossD_RCNN(t_pts,batch_targets);
-        loss = loss_helper:getLoss_RCNN(t_pts,batch_targets);
-    end
-
-    return loss,dloss,midoutputs,inputs,tps_layer;    
-end
-
-
 function doTheUpdate(td,net,parameters,gradParameters,                optimMethod,optimStateTotal,params_dual,affine_flag,mean_im,std_im)
     
     td:getTrainingData();
@@ -169,7 +96,7 @@ function doTheUpdate(td,net,parameters,gradParameters,                optimMetho
     
     net:zeroGradParameters();
     local loss,dloss,midoutputs,inputs,tps_layer=
-                                            forward(td,net,batch_inputs,batch_targets_final,
+                                            forward_helper:forward(td,net,batch_inputs,batch_targets_final,
                                                 false,--saveImage
                                                 false,--euclideanloss true for testing
                                                 mean_im,std_im);
@@ -277,8 +204,8 @@ function train(params)
     -- logger:writeString(dump.tostring(net)..'\n');
     print (net);
 
-    logger:writeString(dump.tostring('making cuda')..'\n');
-    print ('making cuda');
+    logger:writeString(dump.tostring('moving to GPU')..'\n');
+    print ('moving to GPU');
     local net = net:cuda();
     
     logger:writeString(dump.tostring('done')..'\n');
@@ -377,7 +304,7 @@ function train(params)
 			local batch_inputs=vd.training_set.data;
 			local batch_targets=vd.training_set.label;
 		    
-            local loss = forward(td,net,batch_inputs,batch_targets,false,true,mean_im,std_im)
+            local loss = forward_helper:forward(td,net,batch_inputs,batch_targets,false,true,mean_im,std_im)
             -- doTheForward(batch_inputs,batch_targets,nil,params.padTPS,mean_im,std_im);
                 -- ,paths.concat(out_dir_debug,''..i..'_'),params.padTPS);
             -- 
@@ -440,11 +367,23 @@ cmd:text('Options')
 
 local epoch_size=1;
 
-cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/full_system_horse_data_5kp/tps/final/model_all_final.dat');
+-- cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/full_system_horse_data_5kp/tps/final/model_all_final.dat');
+-- cmd:option('-affine',false);
+-- cmd:option('-full_model_flag',false);
+
+-- cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/test_git/test_tps/final/model_all_final.dat');
+-- cmd:option('-affine',false);
+-- cmd:option('-full_model_flag',false);
+
+cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/test_git/test_affine/final/model_all_final.dat');
+cmd:option('-affine',true);
+cmd:option('-full_model_flag',false);
+
+
 cmd:option('-face_detection_model_path','/home/SSD3/maheen-data/horse_project/vanilla_train_face_big/intermediate/model_all_16762.dat');
 
-cmd:option('-full_model_flag',false);
-cmd:option('-outDir','temp');
+
+cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/test_git/test_tps');
 
 cmd:option('learningRate', 1e-2)
 cmd:option('multiplierBottom',1/100);
@@ -455,13 +394,13 @@ cmd:option('-mean_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_2
 cmd:option('-std_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_224_std.png');
 
 cmd:option('-limit',-1,'num of training data to read');
-cmd:option('-iterations',150*epoch_size,'num of iterations to run');
+cmd:option('-iterations',40*epoch_size,'num of iterations to run');
 cmd:option('-saveAfter',30*epoch_size,'num of iterations after which to save model');
 cmd:option('-batchSize',64,'batch size');
 cmd:option('-testAfter',30,'num iterations after which to get validation loss');
 cmd:option('-dispAfter',1,'num iterations after which to display training loss');
 cmd:option('-dispPlotAfter',30,'num iterations after which to display training loss');
-cmd:option('-decreaseAfter',50*epoch_size,'num of iterations to run');
+cmd:option('-decreaseAfter',30*epoch_size,'num of iterations to run');
 
 cmd:option('-mean_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_224_mean.png');
 cmd:option('-std_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_224_std.png');

@@ -99,14 +99,14 @@ do
   		end
 
   		if #training_data:size()~=#mean:size() then
-  			print (' not same size',training_data:size(),mean:size())
+  			-- print (' not same size',training_data:size(),mean:size())
   			local mean=mean:view(1,mean:size(1),mean:size(2),mean:size(3));
 			local std=std:view(1,std:size(1),std:size(2),std:size(3));
   			mean=torch.repeatTensor(mean,training_data:size(1),1,1,1):type(training_data:type());
 			std=torch.repeatTensor(std,training_data:size(1),1,1,1):type(training_data:type());
 			training_data=torch.cdiv((training_data-mean),std);
 		else
-			print ('same size',training_data:size(),mean:size());
+			-- print ('same size',training_data:size(),mean:size());
 			training_data=torch.cdiv((training_data-mean),std);
 		end
   		

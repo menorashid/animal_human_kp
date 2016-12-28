@@ -19,12 +19,15 @@ do
 	        midoutputs_view=midoutputs:double():clone();
 	    end
 
-	    if mean_im then
-	        assert (std_im);
-	        midoutputs=tps_helper:switchMeans_withMeanStd(midoutputs,td.params.imagenet_mean,mean_im,std_im)
-	    else
-	        midoutputs=tps_helper:switchMeans(midoutputs,td.params.imagenet_mean,td.mean_im,td.std_im)
+	    if not mean_im then
+	    	mean_im=td.mean_im;
 	    end
+
+	    if not std_im then 
+	    	std_im=td.std_im;
+	    end
+
+        midoutputs=tps_helper:switchMeans(midoutputs,td.params.imagenet_mean,mean_im,std_im)
 
 	    local outputs=net:get(2):forward(midoutputs);
 	    

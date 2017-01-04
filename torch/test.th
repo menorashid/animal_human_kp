@@ -129,25 +129,21 @@ cmd:text()
 cmd:text('Test Full network')
 cmd:text()
 cmd:text('Options')
-cmd:option('-mean_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_224_mean.png');
-cmd:option('-std_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_224_std.png');
-cmd:option('-limit',-1,'num of training data to read');
-cmd:option('-batchSize',64,'batch size');
+cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
+cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
+cmd:option('-limit',-1,'num of test data to read. negative means all');
 
-cmd:option('-mean_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_224_mean.png');
-cmd:option('-std_im_path','/home/SSD3/maheen-data/data_face_network/aflw_cvpr_224_std.png');
+cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
+cmd:option('-model_path','../models/horse_full_model.dat');
+cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/test_git/test_full_trained_model/test_images');
 
-cmd:option('-val_data_path','/home/SSD3/maheen-data/horse_project/files_for_sheepCode/sheep_test_us_sheep_minloss.txt');
-
-cmd:option('-model_path','/home/SSD3/maheen-data/horse_project/full_system_sheep_data_5kp/full_system/final/model_all_final.dat');
 cmd:option('-gpu',1,'gpu to run the training on');
 
 cmd:option('-iterations',2,'num of iterations to run');
 cmd:option('-batchSize',50,'batch size');
 
-cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/test_git/test_images');
 
-cmd:option('-face',false);
+cmd:option('-face',false,'true if testing a model with no warping network');
 
 params = cmd:parse(arg)
 test(params)

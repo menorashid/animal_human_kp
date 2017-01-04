@@ -304,28 +304,31 @@ cmd:text('Options')
 
 local epoch_size=1;
 
--- cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/experiment_fake_random_neighbors/tps','directory to write output');
+cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/test_git/test_tps','directory to save final and intermediate models etc');
 
-cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/test_git/test_affine','directory to write output');
+cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
+cmd:option('-model','../models/tps_localization_net_untrained.dat');
+cmd:option('affine',false);
 
-cmd:option('-num_ctrl_pts',25,'num of training data to read');
--- cmd:option('-model','/home/SSD3/maheen-data/horse_project/models/conv5_2fc_bn_normalXavier_128_50_eye.dat','model to load')
-cmd:option('-model','/home/SSD3/maheen-data/horse_project/models/conv5_2fc_bn_normalXavier_128_50_withAffine.dat');
-cmd:option('affine',true);
+-- cmd:option('-model','../models/affine_localization_net_untrained.dat');
+-- cmd:option('affine',true);
 
 cmd:option('-size_out',224,'num of training data to read');
 cmd:option('-limit',-1,'num of training data to read');
-cmd:option('-iterations',40*epoch_size,'num of iterations to run');
-cmd:option('-saveAfter',40*epoch_size,'num of iterations after which to save model');
+
+cmd:option('-iterations',10*epoch_size,'num of iterations to run');
+cmd:option('-decreaseAfter',5*epoch_size)
+cmd:option('-saveAfter',3*epoch_size,'num of iterations after which to save model');
+
 cmd:option('-batchSize',64,'batch size');
-cmd:option('-testAfter',30,'num iterations after which to get validation loss');
+cmd:option('-testAfter',1,'num iterations after which to get validation loss');
 cmd:option('-dispAfter',1,'num iterations after which to display training loss');
 cmd:option('-dispPlotAfter',30,'num iterations after which to display training loss');
 
-cmd:option('-horse_data_path','/home/SSD3/maheen-data/horse_project/neighbor_data/small_datasets/matches_fake_random_5_3531_horse.txt');
-cmd:option('-human_data_path','/home/SSD3/maheen-data/horse_project/neighbor_data/small_datasets/matches_fake_random_5_3531_face_noIm.txt');
-cmd:option('-val_horse_data_path','/home/SSD3/maheen-data/horse_project/data_check/horse/matches_5_val_allKP_minLoss_clean.txt');
-cmd:option('-val_human_data_path','/home/SSD3/maheen-data/horse_project/data_check/aflw/matches_5_val_allKP_minLoss_noIm_clean.txt');
+cmd:option('-horse_data_path','../data/train_horse.txt');
+cmd:option('-human_data_path','../data/train_face_noIm.txt');
+cmd:option('-val_horse_data_path','../data/test_minLoss_horse.txt');
+cmd:option('-val_human_data_path','../data/test_minLoss_noIm_face.txt');
 
 cmd:option('learningRate', 1e-3)
 cmd:option('learningRateDecay',5e-6)
@@ -335,7 +338,7 @@ cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
 cmd:option('augmentation' , true);
 cmd:option('-gpu',1,'gpu to run the training on');
-cmd:option('-decreaseAfter',5*epoch_size)
+
 
 params = cmd:parse(arg)
 train(params);

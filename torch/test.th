@@ -135,7 +135,7 @@ cmd:option('-limit',-1,'num of test data to read. negative means all');
 
 cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
 cmd:option('-model_path','../models/horse_full_model.dat');
-cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/test_git/test_full_trained_model/test_images');
+cmd:option('-out_dir_images','temp');
 
 cmd:option('-gpu',1,'gpu to run the training on');
 

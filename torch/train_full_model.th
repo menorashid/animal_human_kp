@@ -364,7 +364,7 @@ cmd:text('Train Full network')
 cmd:text()
 cmd:text('Options')
 
-local epoch_size=1;
+local epoch_size=275;
 
 cmd:option('-tps_model_path','../models/horse_tps_model.dat','localization net path');
 cmd:option('-affine',false,'false if using thin plate spline warping');
@@ -375,7 +375,7 @@ cmd:option('-full_model_flag',false,'true if resuming training from full model')
 -- cmd:option('-full_model_flag',false);
 
 cmd:option('-face_detection_model_path','../models/human_face_model.dat','key point detection network model path');
-cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/test_git/test_full_model_affine','directory to save final and intermediate models etc');
+cmd:option('-outDir','temp','directory to save final and intermediate models etc');
 
 cmd:option('learningRate', 1e-2)
 cmd:option('multiplierBottom',1/100,'learning rate multiplier for beginning layers of localization net');

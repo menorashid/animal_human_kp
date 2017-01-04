@@ -302,9 +302,9 @@ cmd:text('Train Full network')
 cmd:text()
 cmd:text('Options')
 
-local epoch_size=1;
+local epoch_size=56;
 
-cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/test_git/test_tps','directory to save final and intermediate models etc');
+cmd:option('-outDir','temp','directory to save final and intermediate models etc');
 
 cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
 cmd:option('-model','../models/tps_localization_net_untrained.dat');
@@ -321,7 +321,7 @@ cmd:option('-decreaseAfter',5*epoch_size)
 cmd:option('-saveAfter',3*epoch_size,'num of iterations after which to save model');
 
 cmd:option('-batchSize',64,'batch size');
-cmd:option('-testAfter',1,'num iterations after which to get validation loss');
+cmd:option('-testAfter',30,'num iterations after which to get validation loss');
 cmd:option('-dispAfter',1,'num iterations after which to display training loss');
 cmd:option('-dispPlotAfter',30,'num iterations after which to display training loss');
 

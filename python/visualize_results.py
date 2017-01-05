@@ -71,7 +71,7 @@ def saveHTML(out_us,us_test,batch_size=50,num_iter=2):
 
     post_ims_us=['_org_nokp.jpg','_gt.jpg','_warp_nokp.jpg','_warp.jpg','_org.jpg',];
     captions_for_row=['Input','Ground Truth','Warped Image','Prediction Warped','Prediction'];
-    out_file_html=os.path.join(out_us,os.path.split(out_us)[1]+'.html');
+    out_file_html=os.path.join(out_us,'results.html');
     idx_sort=np.argsort(avg)
     ims=[];
     captions=[];
@@ -93,7 +93,7 @@ if __name__=='__main__':
     parser = OptionParser()
     parser.add_option("--test_dir",
                   action="store", type="string",help="dir with test output. specified as out_dir_images in test.th")
-    parser.add_option("--test_file",action="store", type="string",help="test data file. specified as val_data_path in test.th")
+    parser.add_option("--test_file",action="store", default="../data/test_minLoss_horse.txt",type="string",help="test data file. specified as val_data_path in test.th")
     parser.add_option('--batchSize',type=int,default=50,help="batchSize specified in test.th");
     parser.add_option('--iterations',type=int,default=2,help="iterations specified in test.th");
 

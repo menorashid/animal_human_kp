@@ -86,7 +86,7 @@ do
             local pred_output=pred_output_all[im_idx];
 
             local gt_index=gt_output[{{},3}];
-            local idx_keep=torch.find(gt_index:gt(0), 1)
+            local idx_keep=torch.find(gt_index:gt(0):type('torch.CudaTensor'), 1)
             local gt_output=gt_output[{{},{1,2}}]:clone();
 
             pred_output=pred_output:view(pred_output:size(1)/2,2);

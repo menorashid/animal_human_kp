@@ -53,7 +53,7 @@ do
 				
 				local dist=torch.sum(torch.pow(grid_curr-label_curr,2),3);
 				dist=dist:view(dist:size(1),dist:size(2));
-				local idx=torch.find(dist:eq(torch.min(dist)),1)[1]
+				local idx=torch.find(dist:eq(torch.min(dist)):type('torch.CudaTensor'),1)[1]
 				local row = math.ceil(idx/dist:size(2));
 				local col = idx%dist:size(2);
 				if col==0 then

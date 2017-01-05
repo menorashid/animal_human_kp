@@ -267,7 +267,7 @@ do
             local label_curr_horse = self.training_set_horse.label[idx_curr];
             local label_curr_human=self.training_set_human.label[idx_curr];
             local keep_col=label_curr_horse[{{},3}]:gt(0)+label_curr_human[{{},3}]:gt(0)
-            local idx_keep=torch.find(keep_col:gt(1), 1)
+            local idx_keep=torch.find(keep_col:gt(1):type('torch.CudaTensor'), 1)
             
             local label_curr_pos_horse=torch.zeros(#idx_keep,2):type(label_curr_horse:type());
             for idx_pos=1,#idx_keep do

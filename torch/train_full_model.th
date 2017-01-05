@@ -79,7 +79,7 @@ function createIntegratedModel(tps_model_path,face_detection_model,full_model_fl
     return tot_net;
 end
 
-function doTheUpdate(td,net,parameters,gradParameters,                optimMethod,optimStateTotal,params_dual,affine_flag,mean_im,std_im)
+function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTotal,params_dual,affine_flag,mean_im,std_im)
     
     td:getTrainingData();
     td.training_set_horse.data=td.training_set_horse.data:cuda();

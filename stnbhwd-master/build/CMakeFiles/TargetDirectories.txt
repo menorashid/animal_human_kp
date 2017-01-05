@@ -1,2 +1,0 @@
-/home/maheenrashid/Downloads/horses/stnbhwd-master/build/CMakeFiles/custn.dir
-/home/maheenrashid/Downloads/horses/stnbhwd-master/build/CMakeFiles/stn.dir

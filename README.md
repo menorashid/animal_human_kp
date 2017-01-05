@@ -35,6 +35,7 @@ It is a modification of the code from [Spatial Transformer Network (Jaderberg et
 
 ##Dataset
 Download the [Horse Dataset](https://www.dropbox.com/s/9t770jhcjqo3mmg/release_data.zip) (580 MB)
+
 Run the following commands
 ```bash
 cd data
@@ -43,6 +44,7 @@ unzip <path to data zip file>
 
 ##Models
 To download all the pretrained and untrained models go [here](https://www.dropbox.com/s/4r2ghpwoncq656t/release_models.zip) (8.6 GB)
+
 Run the following commands
 ```bash
 cd models

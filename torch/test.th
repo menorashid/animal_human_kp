@@ -129,21 +129,21 @@ cmd:text()
 cmd:text('Test Full network')
 cmd:text()
 cmd:text('Options')
-cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
-cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
+cmd:option('-mean_im_path','../data/horse_mean.png','mean image for image preprocessing for keypoint network training');
+cmd:option('-std_im_path','../data/horse_std.png','std image for image preprocessing for keypoint network training');
 cmd:option('-limit',-1,'num of test data to read. negative means all');
 
-cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
-cmd:option('-model_path','../models/horse_full_model.dat');
-cmd:option('-out_dir_images','temp');
+cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
+cmd:option('-model_path','/disk2/horse_cvpr/scratch_rebuttal/final/model_all_final.dat');
+cmd:option('-out_dir_images','/disk2/horse_cvpr/scratch_rebuttal/test_images');
 
 cmd:option('-gpu',1,'gpu to run the training on');
 
 cmd:option('-iterations',2,'num of iterations to run');
-cmd:option('-batchSize',50,'batch size');
+cmd:option('-batchSize',100,'batch size');
 
 
-cmd:option('-face',false,'true if testing a model with no warping network');
+cmd:option('-face',true,'true if testing a model with no warping network');
 
 params = cmd:parse(arg)
 test(params)

@@ -56,6 +56,77 @@ def us_getErrorsAll(gt_file,out_dir_us,post_us,num_iter,batch_size):
     errors_all=getErrorPercentageImSize(im_sizes,diffs_all);
     return errors_all;
 
+def getErrRates(err,thresh=0.1):
+#     vals=[];
+#     total_errRate=[];
+#     for err in zip(errors_all):
+    err=np.array(err);
+    print type(err);
+    sum_errs=np.sum(err>thresh,0).astype(np.float);
+    print 'sum_errs',sum_errs;
+    total_errs=np.sum(err>=0,0);
+#     print total_errs.shape;
+#     print sum_errs.shape;
+    err_rate=sum_errs/total_errs*100.0;
+    # print err_rate;
+    sum_errs_tot=np.sum(sum_errs);
+    total_errs_tot=np.sum(total_errs);
+    err_rate_tot=sum_errs_tot/total_errs_tot*100.0;
+#         total_errRate.append(err_rate_tot);
+#         vals.append(err_rate);
+    return err_rate,err_rate_tot;
+
+
+def plotComparisonKpError(errors_all,out_file,ticks,labels,xlabel=None,ylabel=None,colors=None,thresh=0.1,\
+                          title='',ylim=None):
+    vals={};
+    err_check=np.array(errors_all);
+    err_rates_all=[];
+    for err in errors_all:
+#         print err_check.shape;
+        err_rate,err_rate_tot=getErrRates(err);
+        err_rate=[err_curr for err_curr in err_rate];
+        # print err_rate;
+        if len(ticks)==len(err_rate)+1:
+            err_rate.append(err_rate_tot);
+        err_rates_all.append(err_rate);
+    err_rates_all=np.array(err_rates_all);
+    # print err_rates_all;
+#     assert len(labels)==err_rates_all.shape[1];
+    for idx_label_curr,label_curr in enumerate(labels):
+        vals[label_curr]=err_rates_all[idx_label_curr,:];
+    print vals;
+        
+#     for err_rate_curr,label_curr in zip(err_rate,labels):
+#         vals[label_curr]=err_rate_curr;
+#     for err,label_curr in zip(errors_all,labels):
+#         err=np.array(err);
+#         sum_errs=np.sum(err>thresh,0).astype(np.float);
+#         total_errs=np.sum(err>=0,0);
+# #         print total_errs;
+# #         print sum_errs;
+#         err_rate=sum_errs/total_errs*100.0;
+# #         print err_rate;
+#         vals[label_curr]=list(err_rate);
+#         vals['ALL']=[]
+    
+#     vals[labels[0]].append(11.577);
+#     vals[labels[1]].append(13.75);
+
+    if colors is None:
+        colors=['b','g'];
+        
+    if xlabel is None:
+        xlabel='Keypoint';
+        
+    if ylabel is None:
+        ylabel='Failure Rate %';
+ 
+        
+    visualize.plotGroupBar(out_file,vals,ticks,labels,colors,xlabel=xlabel,ylabel=ylabel,\
+                           width=1.0/len(vals),title=title,ylim=ylim);
+
+
 def saveHTML(out_us,us_test,batch_size=50,num_iter=2):
     dir_server='./';
     post_us=['_gt_pts.npy','_pred_pts.npy']
@@ -86,6 +157,24 @@ def saveHTML(out_us,us_test,batch_size=50,num_iter=2):
     
     visualize.writeHTML(out_file_html,ims,captions);
     print out_file_html
+
+    labels=['Ours','thems'];
+    ticks=['LE','RE','N','LM','RM','ALL'];
+    # 'ALL']
+    colors=['b','g'];
+    ylim=None;
+    errors_all=[];
+
+    errors_curr=us_getErrorsAll(us_test,out_us,post_us,num_iter,batch_size);
+    failures,failures_kp=getErrRates(errors_curr,0.1)
+    # print failures_kp;
+    errors_all.append(errors_curr)
+    errors_all.append(errors_curr[:])
+
+    out_file_kp_err=os.path.join(out_us,'bar.pdf');
+    # print 'errors all',errors_all;
+    plotComparisonKpError(errors_all,out_file_kp_err,ticks,labels,colors=colors,ylim=ylim);
+
 
 
 if __name__=='__main__':

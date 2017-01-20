@@ -364,7 +364,7 @@ cmd:text('Train Full network')
 cmd:text()
 cmd:text('Options')
 
-local epoch_size=275;
+local epoch_size=1;
 
 cmd:option('-tps_model_path','../models/horse_tps_model.dat','localization net path');
 cmd:option('-affine',false,'false if using thin plate spline warping');

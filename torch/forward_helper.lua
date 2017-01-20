@@ -91,6 +91,9 @@ do
 	        local batch_inputs_view=batch_inputs:clone():double();
 	        batch_inputs_view=tps_helper:unMean(batch_inputs_view,td.mean_im,td.std_im);
 	        
+	        local colors={{0,255,0}};
+	        local pointSize=10; 
+
 	        for im_num=1,outputs_view:size(1) do 
 	            local out_file_gt=saveImage..im_num..'_gt_pts.npy';
 	            local out_file_pred=saveImage..im_num..'_pred_pts.npy';

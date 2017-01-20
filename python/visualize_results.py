@@ -94,7 +94,7 @@ if __name__=='__main__':
     parser.add_option("--test_dir",
                   action="store", type="string",help="dir with test output. specified as out_dir_images in test.th")
     parser.add_option("--test_file",action="store", default="../data/test_minLoss_horse.txt",type="string",help="test data file. specified as val_data_path in test.th")
-    parser.add_option('--batchSize',type=int,default=50,help="batchSize specified in test.th");
+    parser.add_option('--batchSize',type=int,default=100,help="batchSize specified in test.th");
     parser.add_option('--iterations',type=int,default=2,help="iterations specified in test.th");
 
     (options, args) = parser.parse_args()

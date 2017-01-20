@@ -140,7 +140,7 @@ cmd:option('-out_dir_images','temp');
 cmd:option('-gpu',1,'gpu to run the training on');
 
 cmd:option('-iterations',2,'num of iterations to run');
-cmd:option('-batchSize',50,'batch size');
+cmd:option('-batchSize',100,'batch size');
 
 
 cmd:option('-face',false,'true if testing a model with no warping network');

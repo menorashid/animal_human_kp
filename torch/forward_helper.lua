@@ -116,6 +116,57 @@ do
 	    return loss,loss_all;
 	end
 
+
+	function Forward_Helper:forward_split(td,net,batch_inputs,batch_targets,saveImage)
+	    local outputs=net:forward(batch_inputs);
+	    local tps_grid=outputs[1];
+	    outputs=outputs[2];
+	    loss,loss_all = loss_helper:getLoss_Euclidean(outputs,batch_targets);
+
+
+	    if saveImage then
+	        local spanet=nn.Sequential()
+		    local concat=nn.ParallelTable()
+		    concat:add(nn.Transpose({2,3},{3,4}))
+		    concat:add(nn.Identity())
+		    spanet:add(concat)
+		    spanet:add(nn.BilinearSamplerBHWD())
+		    spanet:add(nn.Transpose({3,4},{2,3}))
+	    	spanet=spanet:cuda();
+	        local outputs_view = outputs:view(outputs:size(1),outputs:size(2)/2,2):clone();
+	        local batch_inputs_view = batch_inputs:clone():double();
+	        local midoutputs_view = spanet:forward({batch_inputs,tps_grid});
+
+	        -- batch_inputs_view=tps_helper:unMean(batch_inputs_view,td.mean_im,td.std_im);
+	        
+	        local colors={{0,255,0}};
+	        local pointSize=10; 
+
+	        for im_num=1,outputs_view:size(1) do 
+	            local out_file_gt=saveImage..im_num..'_gt_pts.npy';
+	            local out_file_pred=saveImage..im_num..'_pred_pts.npy';
+
+	            local pred_output=outputs_view[im_num]:clone():double();
+	            local gt_output=batch_targets[im_num]:clone():double();
+	            npy4th.savenpy(out_file_gt,gt_output);
+	            npy4th.savenpy(out_file_pred,pred_output);
+	        end
+	    
+	        local binary=batch_targets[{{},{},3}]:clone();
+	    
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,outputs_view:transpose(2,3),{saveImage,'_org.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary);
+	    
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},nil,{-1,1},colors,pointSize,binary);
+
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,outputs_view:transpose(2,3),{saveImage,'_org_nokp.jpg'},nil,{-1,1},colors,-1,binary);
+
+	        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp_nokp.jpg'},td.params.imagenet_mean,{-1,1},colors,-1,binary);
+	    end
+
+	    return loss,loss_all;
+	end
+
+
 end    
 
 return Forward_Helper;

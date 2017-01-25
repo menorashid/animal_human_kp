@@ -1,0 +1,492 @@
+require 'image'
+npy4th = require 'npy4th'
+require 'data_animal_human';
+require 'data_animal';
+require 'cunn'
+require 'cudnn'
+require 'nn';
+require 'optim'
+require 'stn'
+npy4th=require 'npy4th';
+require 'torchx';
+require 'gnuplot';
+dump=require 'dump';
+tps_helper=require 'tps_helper';
+visualize=require 'visualize';
+loss_helper=require 'loss_helper';
+affine_helper=require 'affine_helper';
+forward_helper=require 'forward_helper';
+
+function getLossD(pred_output,gt_output)
+	local lossD=pred_output-gt_output
+	lossD=torch.mul(lossD,2);
+	return lossD;
+end
+
+function getLoss(pred_output,gt_output)
+	local loss=torch.pow(pred_output-gt_output,2);
+	loss=torch.mean(loss);
+	return loss;
+end
+
+function doTheUpdate(td,net,parameters,gradParameters,tps,optimMethod,optimStateTotal,affine_flag)
+    td:getTrainingData();
+    td.training_set_horse.data=td.training_set_horse.data:cuda();
+    td.training_set_human.label=td.training_set_human.label:cuda();
+    td.training_set_horse.label=td.training_set_horse.label:cuda();
+
+    local horse_labels,human_labels,batch_inputs,_,_=td:getBatchPoints()
+    
+    local gt_output;
+    if params.affine then
+        local gt_params=affine_helper:getGTParams(human_labels,horse_labels);
+        gt_output=tps:forward(gt_params);
+    else
+        gt_output=tps:getGTOutput(human_labels,horse_labels);
+    end
+
+    local batch_targets_warp = gt_output:clone();
+
+
+    net:zeroGradParameters()
+
+    local outputs=net:forward(batch_inputs);
+    local mid_output=net:get(#net-1).output;
+    -- print (outputs);
+    -- print (mid_output:size());
+
+    local dloss_warp = getLossD(outputs[1],batch_targets_warp);
+    local loss_warp = getLoss(outputs[1],batch_targets_warp);
+    -- print (net:get(2):get(1));
+    local back_warp=net:get(#net):get(1):backward(mid_output, dloss_warp)
+    net:get(1):backward(batch_inputs,back_warp);
+
+    local batch_targets_kp=td.training_set_horse.label;
+    
+    local dloss_kp = loss_helper:getLossD_RCNN(outputs[2],batch_targets_kp);
+    local loss_kp = loss_helper:getLoss_RCNN(outputs[2],batch_targets_kp);
+    -- print (net:get(2):get(2));
+    local back_kp=net:get(2):get(2):backward(mid_output, dloss_kp)
+    net:get(1):backward(batch_inputs,back_kp);
+
+    for layer_num =1, #parameters do
+        local fevalScoreVar = function(x)
+            return loss, gradParameters[layer_num]
+        end
+        optimMethod(fevalScoreVar, parameters[layer_num], optimStateTotal[layer_num]);
+    end
+    return loss_kp,loss_warp;
+
+end
+
+function getOptimStateTotal(params,parameters,layer_pivot,logger)
+    local optimStateTotal={}
+
+    for layer_num=1,#parameters do
+        local str=''..layer_num;
+        for layer_size_idx=1,#parameters[layer_num]:size() do
+            str=str..' '..parameters[layer_num]:size(layer_size_idx);
+        end
+
+        local learningRate_curr=params.learningRate;
+        if layer_num<=layer_pivot then
+            -- if params.divisor==0 then
+            --     learningRate_curr=0;
+            -- else
+            learningRate_curr=learningRate_curr*params.multiplierBottom
+            -- end
+        end
+
+        local optimState_curr={learningRate=learningRate_curr,
+                learningRateDecay=params.learningRateDecay ,
+                beta1=params.beta1 ,
+                beta2=params.beta2 ,
+                epsilon=params.epsilon };
+
+        str=str..' '..optimState_curr.learningRate;
+        print (str);
+        logger:writeString(dump.tostring(str)..'\n');
+        optimStateTotal[#optimStateTotal+1]=optimState_curr;
+    end
+    return optimStateTotal;
+end
+
+function train(params) 
+    print ('setting_threads');
+    torch.setnumthreads(1);
+    local out_dir=params.outDir
+    if params.limit<0 then
+        params.limit=nil;
+    end
+
+    paths.mkdir(out_dir);
+    
+    local out_dir_intermediate=paths.concat(out_dir,'intermediate');
+    local out_dir_final=paths.concat(out_dir,'final');
+    paths.mkdir(out_dir_intermediate);
+    paths.mkdir(out_dir_final);
+    
+    local out_file_net=paths.concat(out_dir_final,'model_all_final.dat');
+    local out_file_loss=paths.concat(out_dir_final,'loss_final.npy');
+    local out_file_loss_mid=paths.concat(out_dir_final,'loss_mid.npy');
+    local out_file_loss_val=paths.concat(out_dir_final,'loss_final_val.npy');
+    
+    local out_file_intermediate_pre = paths.concat(out_dir_intermediate,'model_all_');
+    local out_file_loss_intermediate_pre = paths.concat(out_dir_intermediate,'loss_all_');
+
+    local out_file_loss_plot=paths.concat(out_dir_intermediate,'loss_all.png');
+    local out_file_loss_mid_plot=paths.concat(out_dir_intermediate,'loss_mid.png');
+    local out_file_loss_val_plot=paths.concat(out_dir_intermediate,'loss_val.png');
+
+    local out_file_log=paths.concat(out_dir_intermediate,'log.txt');
+    local logger=torch.DiskFile(out_file_log,'w');
+
+    logger:writeString(dump.tostring(params)..'\n');
+    print (params);
+
+    cutorch.setDevice(params.gpu);
+
+    local num_ctrl_pts=params.num_ctrl_pts
+    local size_out=params.size_out;
+
+    local optimState       
+    local optimMethod      
+
+    optimMethod = optim.adam
+    optimState={learningRate=params.learningRate,
+                learningRateDecay=params.learningRateDecay ,
+                beta1=params.beta1 ,
+                beta2=params.beta2 ,
+                epsilon=params.epsilon };
+
+    logger:writeString(dump.tostring('loading network')..'\n');
+    print ('loading network');
+
+    local net = torch.load(params.model);
+    -- ds_net=setUpGTNets();
+    local tps;
+    tps=net:get(2):get(1):get(3);
+
+    logger:writeString(dump.tostring('done loading network')..'\n');
+    print ('done loading network');
+    print (net);
+
+    logger:writeString(dump.tostring('moving to GPU')..'\n');
+    print ('moving to GPU');
+    net = net:cuda();
+    tps=tps:cuda();
+    net:training();
+
+    logger:writeString(dump.tostring('done')..'\n');
+    print ('done');
+
+    logger:writeString(dump.tostring('loading params')..'\n');
+    print ('loading params');
+    -- parameters, gradParameters = net:getParameters()
+    local parameters, gradParameters = net:parameters();
+    
+    local optimStateTotal= getOptimStateTotal(params,parameters,10,logger);
+    
+    logger:writeString(dump.tostring('loading done')..'\n');
+    print ('loading done');
+    logger:writeString(dump.tostring(optimState)..'\n');
+    print (optimState)
+
+    local data_params={file_path_horse=params.horse_data_path,
+                        file_path_human=params.human_data_path,
+                        augmentation=params.augmentation,
+                        humanImage=false,
+                        limit=params.limit};
+
+    local td=data_animal_human(data_params);
+    td.params.input_size={size_out,size_out};
+    td.batch_size=params.batchSize;
+    
+    local vd;
+    if params.testAfter>0 then
+        data_params.file_path_horse = params.val_horse_data_path;
+        data_params.file_path_human = params.val_human_data_path;
+        data_params.augmentation = false;
+        vd = data_animal_human(data_params);
+        vd.params.input_size = {size_out,size_out};
+        vd.batch_size = params.batchSize;        
+    end
+    
+    local losses = {};
+    local losses_mid = {};
+    local losses_iter = {};
+
+    local val_losses = {};
+    local val_losses_iter = {};
+
+    for i=1,params.iterations do
+        
+        if params.decreaseAfter then
+            if i%params.decreaseAfter==0 then
+                params.learningRate=params.learningRate/10;
+                optimState.learningRate=params.learningRate;
+                optimStateTotal=getOptimStateTotal(params,parameters,10,logger);
+            end
+        end
+
+        local train_loss,loss_mid = doTheUpdate(td,net,parameters,gradParameters,tps,optimMethod,optimStateTotal);
+        losses[#losses + 1] = train_loss;
+        losses_mid[#losses_mid+1]=loss_mid;
+        
+        losses_iter[#losses_iter +1] = i;
+
+        if i%params.dispAfter==0 then
+            local disp_str=string.format("lr: %6s, minibatches processed: %6s, loss = %6.6f, midloss = %6.6f", optimState.learningRate,i, losses[#losses],losses_mid[#losses_mid])
+            logger:writeString(dump.tostring(disp_str)..'\n');
+            print (disp_str);
+
+            local str_score=''..losses[#losses];
+            
+            if str_seg=='nan' or str_score=='nan' then
+                logger:writeString(dump.tostring('QUITTING')..'\n');
+                print('QUITTING');
+                break;
+            end
+        end
+
+        if i%params.testAfter==0 and params.testAfter>0 then 
+            net:evaluate();
+            vd:getTrainingData();
+            vd.training_set_horse.data=vd.training_set_horse.data:cuda();
+            vd.training_set_human.label=vd.training_set_human.label:cuda();
+            vd.training_set_horse.label=vd.training_set_horse.label:cuda();
+
+            local horse_labels,human_labels,batch_inputs,_,_=vd:getBatchPoints()
+            
+            local gt_output;
+            gt_output=tps:getGTOutput(human_labels,horse_labels);
+            
+            local batch_targets= gt_output:clone();
+            local outputs=net:forward(batch_inputs)[2];
+            local loss = getLoss(outputs,batch_targets);
+
+            val_losses[#val_losses+1]=loss;
+            val_losses_iter[#val_losses_iter+1]=i;
+
+            net:training();
+            disp_str=string.format("minibatches processed: %6s, val loss = %6.6f", i, val_losses[#val_losses])
+            logger:writeString(dump.tostring(disp_str)..'\n');
+            print(disp_str)
+        end
+
+        -- check if model needs to be saved. save it.
+        -- also save losses
+        if i%params.saveAfter==0 then
+            local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
+            
+            torch.save(out_file_intermediate,net);
+            
+            if #losses>0 then
+                local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
+                npy4th.savenpy(out_file_loss_intermediate, torch.Tensor(losses))
+            end
+
+            if params.testAfter>0 then 
+                if #val_losses>0 then
+                    local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'_val.npy';
+                    npy4th.savenpy(out_file_loss_intermediate, torch.Tensor(val_losses))
+                end
+            end
+            
+            visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+            visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
+            visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
+            
+        end
+
+        if i%params.dispPlotAfter==0 then
+            visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+            visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
+            visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
+        end
+
+    end
+
+    -- save final model
+    torch.save(out_file_net,net);
+    if #losses>0 then
+        npy4th.savenpy(out_file_loss, torch.Tensor(losses))
+        npy4th.savenpy(out_file_loss_mid, torch.Tensor(losses_mid))
+    end
+    
+    if params.testAfter>0 and #val_losses>0 then
+        npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
+    end
+    visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+    visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
+    visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
+
+end
+
+
+function test(params)
+    if params.limit<0 then
+        params.limit=nil;
+    end
+    local val_data_path= params.val_horse_data_path
+    
+    local out_dir_images=params.out_dir_images;
+    paths.mkdir(out_dir_images);
+    local out_file_loss_val=paths.concat(out_dir_images,'loss_final_val.npy');
+    local out_file_loss_val_ind=paths.concat(out_dir_images,'loss_final_val_ind.npy');
+    local out_file_log=paths.concat(out_dir_images,'log_test.txt');
+    local logger=torch.DiskFile(out_file_log,'w');
+    
+    logger:writeString(dump.tostring(params)..'\n');
+    print (params);
+
+    cutorch.setDevice(params.gpu);
+    logger:writeString(dump.tostring('loading network')..'\n');
+    print ('loading network');
+
+    local net=torch.load(params.model_path);
+    
+    logger:writeString(dump.tostring('done loading network')..'\n');
+    print ('done loading network');
+    print (net);
+
+    logger:writeString(dump.tostring('moving to GPU')..'\n');
+    print ('moving to GPU');
+    
+    local net = net:cuda();
+    net:evaluate();
+
+    logger:writeString(dump.tostring('done')..'\n');
+    print ('done');
+
+    local data_params={file_path=val_data_path,
+                    batch_size=params.batchSize,
+                    mean_file=params.mean_im_path,
+                    std_file=params.std_im_path,
+                    augmentation=false,
+                    limit=params.limit,
+                    input_size={224,224},
+                    imagenet_mean=true};
+
+    -- if params.face then
+    --     data_params.imagenet_mean=false;
+    -- end
+    
+    local td=data_animal(data_params);
+   
+    local val_losses = {};
+    local val_losses_iter = {};
+
+    local val_losses_ind={};
+
+    for i=1,params.iterations do
+
+            td:getTrainingData();
+
+            td.training_set.data=td.training_set.data:cuda();
+            td.training_set.label=td.training_set.label:cuda();
+
+            local batch_inputs=td.training_set.data;
+            local batch_targets=td.training_set.label;
+            
+            local loss,loss_all;
+            local saveImage=paths.concat(out_dir_images,i..'_')
+            local colors={{0,255,0}};
+            local pointSize=10;
+            
+            -- if params.face then
+            --     loss, loss_all = forward_helper:forward_noWarp(td,net,batch_inputs,batch_targets,saveImage,true);
+            -- else
+            loss,loss_all = forward_helper:forward_split(td,net,batch_inputs,batch_targets,saveImage,true)
+            -- end
+
+            for idx_ind=1,loss_all:size(1) do
+                val_losses_ind[#val_losses_ind+1]=loss_all[idx_ind];
+            end
+            
+            val_losses[#val_losses+1]=loss;
+            val_losses_iter[#val_losses_iter+1]=i;
+
+            disp_str=string.format("minibatches processed: %6s, val loss = %6.6f", i, val_losses[#val_losses])
+            logger:writeString(dump.tostring(disp_str)..'\n');
+            print(disp_str)
+
+    end
+
+    val_losses_ind=torch.Tensor(val_losses_ind);
+    print (val_losses_ind:size())
+    
+    if val_losses_ind:size(1)>#td.lines_horse then
+        val_losses_ind=val_losses_ind[{{1,#td.lines_horse}}];
+    end
+    
+    print (val_losses_ind:size())
+    
+    print (params.model_path);
+    
+    disp_str=string.format("minibatches processed: all, val loss = %6.6f", torch.mean(val_losses_ind))
+    logger:writeString(dump.tostring(disp_str)..'\n');
+    
+    print(disp_str)
+
+    npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
+    npy4th.savenpy(out_file_loss_val_ind, val_losses_ind)
+end
+
+
+cmd = torch.CmdLine()
+cmd:text()
+cmd:text('Train Full network')
+cmd:text()
+cmd:text('Options')
+
+local epoch_size=56;
+
+cmd:option('-outDir','/disk2/horse_cvpr/split_warp_5_nn','directory to save final and intermediate models etc');
+
+cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
+cmd:option('-model','../models/split_warp_net_untrained.dat');
+cmd:option('affine',false);
+
+-- cmd:option('-model','../models/affine_localization_net_untrained.dat');
+-- cmd:option('affine',true);
+
+cmd:option('-size_out',224,'num of training data to read');
+cmd:option('-limit',-1,'num of training data to read');
+
+cmd:option('-iterations',150*epoch_size,'num of iterations to run');
+cmd:option('-decreaseAfter',50*epoch_size)
+cmd:option('-saveAfter',15*epoch_size,'num of iterations after which to save model');
+
+cmd:option('-batchSize',64,'batch size');
+cmd:option('-testAfter',120,'num iterations after which to get validation loss');
+cmd:option('-dispAfter',1,'num iterations after which to display training loss');
+cmd:option('-dispPlotAfter',120,'num iterations after which to display training loss');
+
+cmd:option('-horse_data_path','../data/train_horse_minloss.txt');
+cmd:option('-human_data_path','../data/train_face_noIm_minloss.txt');
+cmd:option('-val_horse_data_path','../data/test_minLoss_horse.txt');
+cmd:option('-val_human_data_path','../data/test_minLoss_noIm_face.txt');
+
+cmd:option('learningRate', 1e-3)
+cmd:option('learningRateDecay',5e-6)
+cmd:option('multiplierBottom',1/10);
+cmd:option('beta1', 0.9)
+cmd:option('beta2', 0.999)
+cmd:option('epsilon', 1e-8)
+cmd:option('augmentation' , true);
+cmd:option('-gpu',1,'gpu to run the training on');
+
+
+params = cmd:parse(arg)
+-- train(params);
+cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
+cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
+cmd:option('-out_dir_images',paths.concat(params.outDir,'test_images'),'directory to save final results etc');
+cmd:option('-model_path',paths.concat(params.outDir,'final/model_all_final.dat'),'directory to save final results etc');
+cmd:option('-iterations',2,'num of iterations to run');
+cmd:option('-batchSize',100,'batch size');
+cmd:option('-val_horse_data_path','../data/test_minloss_horse_old.txt');
+-- local out_dir_images=params.out_dir_images;
+params = cmd:parse(arg)
+test(params);

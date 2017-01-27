@@ -1,0 +1,2 @@
+/home/maheenrashid/Downloads/animal_human_kp/stnbhwd-master/build/CMakeFiles/custn.dir
+/home/maheenrashid/Downloads/animal_human_kp/stnbhwd-master/build/CMakeFiles/stn.dir

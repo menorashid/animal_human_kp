@@ -1,0 +1,173 @@
+
+
+require 'loadcaffe';
+require 'cunn'
+require 'cudnn'
+require 'nn';
+require 'image';
+npy4th=require 'npy4th'
+
+
+function makeXavierGaussian(model)
+    for idx=1,#model do
+        
+        local m = model.modules[idx]
+        if m.weight then
+            local var=nil;
+            if m.__typename == 'nn.SpatialConvolution' then
+                var = {m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW}
+            elseif m.__typename == 'nn.SpatialConvolutionMM' then
+                var = {m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW}
+            elseif m.__typename == 'nn.LateralConvolution' then
+                var = {m.nInputPlane*1*1, m.nOutputPlane*1*1}
+            elseif m.__typename == 'nn.VerticalConvolution' then
+                var = {1*m.kH*m.kW, 1*m.kH*m.kW}
+            elseif m.__typename == 'nn.HorizontalConvolution' then
+                var = {1*m.kH*m.kW, 1*m.kH*m.kW}
+            elseif m.__typename == 'nn.Linear' then
+                var = {m.weight:size(2), m.weight:size(1)}
+            elseif m.__typename == 'nn.TemporalConvolution' then
+                var = {m.weight:size(2), m.weight:size(1)}
+            end
+            if var then
+	            var = 2/(var[1] + var[2])
+	            m.weight=torch.randn(m.weight:size()):mul(torch.sqrt(var));
+	            -- m.weight=m.weight/1000;
+	            m.bias=torch.zeros(m.bias:size());
+	            
+	            -- m.weight=torch.zeros(m.weight:size());
+	            -- m.bias=torch.zeros(m.bias:size());
+	            
+	            print (m.weight:size(),var,torch.var(m.weight));
+	        end
+        end
+    end
+
+    return model
+end
+
+
+function reSaveTPSModel()
+    local path_caffe_alexnet='../models/bvlc_alexnet.caffemodel';
+    local path_deploy='../models/deploy.prototxt';
+    local path_out='../models/tps_untrained_bn_fix.dat';
+    local model = loadcaffe.load(path_deploy,path_caffe_alexnet, 'cudnn')
+
+    print (model);
+
+    -- model=model:cuda();
+    local new_model=nn.Sequential();
+    for layer_num=#model,14,-1 do
+         local layer_curr=model:get(layer_num);
+         new_model:insert(layer_curr,1);
+         model:remove(layer_num);
+    end
+    print (model);
+    new_model:insert(nn.SpatialConvolution(256,128,1,1),1);
+    new_model:insert(cudnn.ReLU(),1);
+    new_model:insert(nn.SpatialBatchNormalization(256),1);
+    
+    for layer_num=#new_model,7,-1 do
+        new_model:remove(layer_num);
+    end
+    new_model:add(nn.BatchNormalization(4608));
+    new_model:add(nn.Linear(4608,128));
+    new_model:add(nn.BatchNormalization(128,25));
+    new_model:add(nn.ReLU());
+    new_model:add(nn.Dropout(0.5));
+    new_model:add(nn.Linear(128,50));
+    print (new_model);
+
+    new_model=makeXavierGaussian(new_model);
+
+    -- print (new_model);
+    for layer_num =1,#new_model do
+        local layer_curr=new_model:get(layer_num);
+        model:add(layer_curr);
+    end
+    model=cudnn.convert(model,cudnn);
+    print (model);
+    model=model:cuda();
+    input=torch.Tensor(10,3,227,227);
+    local output=model:forward(input:cuda());
+    print (output:size());
+
+    -- new_model:remove(#new_model);
+    -- new_model:remove(#new_model);
+    -- new_model:add(nn.Linear(4096,10));
+    -- print (new_model);
+
+    -- new_model=makeXavierGaussian(new_model);
+    -- for layer_num=1,#new_model do
+    --  model:add(new_model:get(layer_num));
+    -- end
+
+    -- print (model);
+
+
+    torch.save(path_out,model);
+
+end
+
+-- reSaveTPSModel();
+
+path_to_tps='../models/tps_untrained_bn_fix.dat';
+model=torch.load(path_to_tps);
+print (model);
+
+-- local im=image.load('/home/SSD3/maheen-data/horse_project/data_check_227/horse/im/_04_Aug16_png/horse+head101.jpg')*255;
+-- print (torch.min(im),torch.max(im));
+-- im=im:sub(1,3,220,227,220,227);
+-- -- im=im:narrow(3,40,50);
+-- print (im:size());
+-- print (im);
+-- im_new=im:clone();
+-- im_new[{1,{},{}}]=im[{3,{},{}}]
+-- im_new[{3,{},{}}]=im[{1,{},{}}]
+-- im=im_new;
+-- print (im);
+-- print im[{:,:,:}];
+-- im=im[{{3,2,1},{},{}}];
+
+
+-- local path_caffe_alexnet='../models/bvlc_alexnet.caffemodel';
+-- local path_deploy='../models/deploy.prototxt';
+-- local path_out='../models/alexnet_last_scratch.dat';
+-- local model = loadcaffe.load(path_deploy,path_caffe_alexnet, 'cudnn')
+
+-- print (model);
+-- -- model=model:cuda();
+-- local new_model=nn.Sequential();
+-- for layer_num=#model,#model-1,-1 do
+-- 	local layer_curr=model:get(layer_num);
+-- 	new_model:insert(layer_curr,1);
+-- 	model:remove(layer_num);
+-- end
+-- print (model);
+
+-- print (new_model);
+-- new_model:remove(#new_model);
+-- new_model:remove(#new_model);
+-- new_model:add(nn.Linear(4096,10));
+-- print (new_model);
+
+-- new_model=makeXavierGaussian(new_model);
+-- for layer_num=1,#new_model do
+-- 	model:add(new_model:get(layer_num));
+-- end
+
+-- print (model);
+
+
+-- torch.save(path_out,model);
+
+
+
+-- input=torch.Tensor(2,3,227,227):cuda();
+-- input[1]=im:cuda();
+-- input[2]=im:cuda();
+-- model=model:cuda();
+
+-- print (input:size())
+-- output=model:forward(input);
+-- print (output:size())

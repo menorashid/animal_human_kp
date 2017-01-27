@@ -89,7 +89,12 @@ do
 	    if saveImage then
 	        local outputs_view=outputs:view(outputs:size(1),outputs:size(2)/2,2):clone();
 	        local batch_inputs_view=batch_inputs:clone():double();
-	        batch_inputs_view=tps_helper:unMean(batch_inputs_view,td.mean_im,td.std_im);
+	        local mean_to_add=nil;
+	        if td.params.imagenet_mean then
+	        	mean_to_add=td.params.imagenet_mean;
+	        else
+	        	batch_inputs_view=tps_helper:unMean(batch_inputs_view,td.mean_im,td.std_im);
+	        end
 	        
 	        local colors={{0,255,0}};
 	        local pointSize=10; 
@@ -105,12 +110,12 @@ do
 	        end
 	    
 	        local binary=batch_targets[{{},{},3}]:clone();
+	    	print (td.params.imagenet_mean);
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,outputs_view:transpose(2,3),{saveImage,'_org.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary,td.bgr);
 	    
-	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,outputs_view:transpose(2,3),{saveImage,'_org.jpg'},nil,{-1,1},colors,pointSize,binary);
-	    
-	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},nil,{-1,1},colors,pointSize,binary);
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},nil,{-1,1},colors,pointSize,binary,td.bgr);
 
-	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,outputs_view:transpose(2,3),{saveImage,'_org_nokp.jpg'},nil,{-1,1},colors,-1,binary);
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,outputs_view:transpose(2,3),{saveImage,'_org_nokp.jpg'},nil,{-1,1},colors,-1,binary,td.bgr);
 	    end
 
 	    return loss,loss_all;

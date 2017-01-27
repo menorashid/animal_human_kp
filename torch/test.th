@@ -60,7 +60,11 @@ function test(params)
                     imagenet_mean=true};
 
     if params.face then
-        data_params.imagenet_mean=false;
+        if params.bgr then
+            data_params.bgr=true;   
+        else
+            data_params.imagenet_mean=false;
+        end
     end
     
     local td=data_animal(data_params);
@@ -86,6 +90,7 @@ function test(params)
             local pointSize=10;
             
             if params.face then
+                print 'nowarp';
                 loss, loss_all = forward_helper:forward_noWarp(td,net,batch_inputs,batch_targets,saveImage,true);
             else
                 loss,loss_all = forward_helper:forward(td,net,batch_inputs,batch_targets,saveImage,true)
@@ -129,15 +134,17 @@ cmd:text()
 cmd:text('Test Full network')
 cmd:text()
 cmd:text('Options')
-cmd:option('-mean_im_path','../data/horse_mean.png','mean image for image preprocessing for keypoint network training');
-cmd:option('-std_im_path','../data/horse_std.png','std image for image preprocessing for keypoint network training');
+cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
+cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 cmd:option('-limit',-1,'num of test data to read. negative means all');
 
-cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
-cmd:option('-model_path','/disk2/horse_cvpr/scratch_rebuttal/final/model_all_final.dat');
-cmd:option('-out_dir_images','/disk2/horse_cvpr/scratch_rebuttal/test_images');
+cmd:option('-val_data_path','../data_227/test_minloss_horse_old.txt','validation data file path');
+cmd:option('-model_path','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/final/model_all_final.dat');
+cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/test_images');
+
 
 cmd:option('-gpu',1,'gpu to run the training on');
+cmd:option('-bgr',true);
 
 cmd:option('-iterations',2,'num of iterations to run');
 cmd:option('-batchSize',100,'batch size');

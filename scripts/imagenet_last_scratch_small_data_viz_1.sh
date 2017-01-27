@@ -1,0 +1,3 @@
+python visualize_results.py --test_dir /home/SSD3/maheen-data/horse_project/cvpr_rebuttal/imagenet_last_scratch_small_data/small_train_minloss_2500/test_images --test_file ../data_227/test_minloss_horse_old.txt --batchSize 100 --iterations 2
+python visualize_results.py --test_dir /home/SSD3/maheen-data/horse_project/cvpr_rebuttal/imagenet_last_scratch_small_data/small_train_minloss_3000/test_images --test_file ../data_227/test_minloss_horse_old.txt --batchSize 100 --iterations 2
+python visualize_results.py --test_dir /home/SSD3/maheen-data/horse_project/cvpr_rebuttal/imagenet_last_scratch_small_data/small_train_minloss_3531/test_images --test_file ../data_227/test_minloss_horse_old.txt --batchSize 100 --iterations 2

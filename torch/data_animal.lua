@@ -10,6 +10,8 @@ do
         self.limit=args.limit;
         self.augmentation=args.augmentation;
         self.rotFix=args.rotFix;
+        self.bgr=args.bgr;
+        
         print ('self.augmentation',self.augmentation);
 
         self.start_idx_horse=1;
@@ -239,6 +241,12 @@ do
                     img_horse= torch.cat(img_horse,img_horse,1):cat(img_horse,1)
                 end
                 img_horse,label_horse=self:processImAndLabel(img_horse,label_horse,params)
+                if self.bgr then
+                    -- print 'bgring';
+                    local img_horse_temp=img_horse:clone();
+                    img_horse[{1,{},{}}]=img_horse_temp[{3,{},{}}];
+                    img_horse[{3,{},{}}]=img_horse_temp[{1,{},{}}];
+                end
                 training_set.data[curr_idx]=img_horse:int();
                 training_set.label[curr_idx]=label_horse;
                 training_set.input[curr_idx]=img_path_horse;

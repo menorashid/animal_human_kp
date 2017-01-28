@@ -79,18 +79,23 @@ function reSaveTPSModel()
     print (new_model);
 
     new_model=makeXavierGaussian(new_model);
-
     -- print (new_model);
     for layer_num =1,#new_model do
         local layer_curr=new_model:get(layer_num);
         model:add(layer_curr);
     end
+
+    model:get(#model).weight:fill(0)
+    local layer_last=model:get(#model);
+    print (layer_last.weight:size(),torch.min(layer_last.weight),torch.max(layer_last.weight))
+    print (layer_last.bias:size(),torch.min(layer_last.bias),torch.max(layer_last.bias))
+
     model=cudnn.convert(model,cudnn);
-    print (model);
+    -- print (model);
     model=model:cuda();
     input=torch.Tensor(10,3,227,227);
     local output=model:forward(input:cuda());
-    print (output:size());
+    -- print (output:size());
 
     -- new_model:remove(#new_model);
     -- new_model:remove(#new_model);
@@ -114,6 +119,10 @@ end
 path_to_tps='../models/tps_untrained_bn_fix.dat';
 model=torch.load(path_to_tps);
 print (model);
+
+local layer_last=model:get(#model);
+print (layer_last.weight:size(),torch.min(layer_last.weight),torch.max(layer_last.weight))
+print (layer_last.bias:size(),torch.min(layer_last.bias),torch.max(layer_last.bias))
 
 -- local im=image.load('/home/SSD3/maheen-data/horse_project/data_check_227/horse/im/_04_Aug16_png/horse+head101.jpg')*255;
 -- print (torch.min(im),torch.max(im));

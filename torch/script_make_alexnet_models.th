@@ -114,17 +114,43 @@ function reSaveTPSModel()
 
 end
 
+function saveKPNetForImagenetTraining()
+    local path_to_tps='../models/human_face_model.dat';
+    local path_out='../models/kp_net_untrained_imagenet.dat';
+    local model=torch.load(path_to_tps);
+    print (model);
+    model:remove(#model);
+    model:add(nn.Linear(100,1000));
+    model:add(nn.SoftMax());
+    model=cudnn.convert(model,nn);
+    print (model);
+    print (torch.min(model:get(26).weight),torch.max(model:get(26).weight));
+    model=makeXavierGaussian(model);
+    model=cudnn.convert(model,cudnn);
+    print (torch.min(model:get(26).weight),torch.max(model:get(26).weight));
+    local input=torch.Tensor(10,3,227,227):cuda();
+    local model=model:cuda();
+    -- print (input:size());
+    -- local output=model:forward(input);
+    -- print ('output',output:size());
+    print (model)
+    -- model:zeroGradParameters();
+    torch.save(path_out,model);
+    print (path_out)
+    -- model:in
+end
 
+-- saveKPNetForImagenetTraining();
 
 -- reSaveTPSModel();
 
-path_to_tps='../models/human_face_model.dat';
+path_to_tps='../models/kp_net_untrained_imagenet.dat';
 model=torch.load(path_to_tps);
 print (model);
 
-local layer_last=model:get(#model);
-print (layer_last.weight:size(),torch.min(layer_last.weight),torch.max(layer_last.weight))
-print (layer_last.bias:size(),torch.min(layer_last.bias),torch.max(layer_last.bias))
+-- local layer_last=model:get(#model);
+-- print (layer_last.weight:size(),torch.min(layer_last.weight),torch.max(layer_last.weight))
+-- print (layer_last.bias:size(),torch.min(layer_last.bias),torch.max(layer_last.bias))
 
 -- local im=image.load('/home/SSD3/maheen-data/horse_project/data_check_227/horse/im/_04_Aug16_png/horse+head101.jpg')*255;
 -- print (torch.min(im),torch.max(im));

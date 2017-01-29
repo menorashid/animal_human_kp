@@ -114,9 +114,11 @@ function reSaveTPSModel()
 
 end
 
+
+
 -- reSaveTPSModel();
 
-path_to_tps='../models/tps_untrained_bn_fix.dat';
+path_to_tps='../models/human_face_model.dat';
 model=torch.load(path_to_tps);
 print (model);
 

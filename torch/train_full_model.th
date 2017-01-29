@@ -115,6 +115,19 @@ function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTota
         grad_mid=grad_mid:cdiv(std_rep);    
     end
     
+    -- print (grad_mid:size())
+    -- print (td.bgr);
+
+    if td.bgr then
+        local grad_mid_clone=grad_mid:clone();
+        -- print (grad_mid:size())
+        -- print (grad_mid[{10,{},40,40}])
+        grad_mid[{{},1,{},{}}]=grad_mid_clone[{{},3,{},{}}];
+        grad_mid[{{},3,{},{}}]=grad_mid_clone[{{},1,{},{}}];
+        -- print (grad_mid:size())
+        -- print (grad_mid[{10,{},40,40}])
+
+    end
     net:get(1):backward(inputs, grad_mid);
 
     if params_dual then
@@ -231,9 +244,9 @@ function train(params)
                         std_file=params.std_im_path,
                         augmentation=params.augmentation,
                         limit=params.limit,
-                        input_size={224,224},
+                        input_size={227,227},
                         humanImage=false,
-                        };
+                        bgr=params.bgr};
                         
     local td=data_animal_human(data_params);
     
@@ -304,7 +317,7 @@ function train(params)
 
 			local batch_inputs=vd.training_set.data;
 			local batch_targets=vd.training_set.label;
-		    
+		    -- print ('vd bgr',vd.bgr);
             local loss = forward_helper:forward(td,net,batch_inputs,batch_targets,false,true,mean_im,std_im)
             -- doTheForward(batch_inputs,batch_targets,nil,params.padTPS,mean_im,std_im);
                 -- ,paths.concat(out_dir_debug,''..i..'_'),params.padTPS);
@@ -343,7 +356,7 @@ function train(params)
             visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
             visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
         end
-
+        -- break;
 	end
 
     -- save final model
@@ -364,9 +377,9 @@ cmd:text('Train Full network')
 cmd:text()
 cmd:text('Options')
 
-local epoch_size=1;
+local epoch_size=56;
 
-cmd:option('-tps_model_path','../models/horse_tps_model.dat','localization net path');
+cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr/final/model_all_final.dat','localization net path');
 cmd:option('-affine',false,'false if using thin plate spline warping');
 cmd:option('-full_model_flag',false,'true if resuming training from full model');
 
@@ -375,7 +388,7 @@ cmd:option('-full_model_flag',false,'true if resuming training from full model')
 -- cmd:option('-full_model_flag',false);
 
 cmd:option('-face_detection_model_path','../models/human_face_model.dat','key point detection network model path');
-cmd:option('-outDir','temp','directory to save final and intermediate models etc');
+cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr','directory to save final and intermediate models etc');
 
 cmd:option('learningRate', 1e-2)
 cmd:option('multiplierBottom',1/100,'learning rate multiplier for beginning layers of localization net');
@@ -390,12 +403,12 @@ cmd:option('-dispAfter',1,'num iterations after which to display training loss')
 cmd:option('-dispPlotAfter',120,'num iterations after which to save loss plots');
 cmd:option('-decreaseAfter',50*epoch_size,'num iterations after which to decrease learning rate');
 
-cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
-cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
+cmd:option('-mean_im_path','../data_227/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
+cmd:option('-std_im_path','../data_227/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 
-cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
-cmd:option('-horse_data_path','../data/train_horse_minloss.txt','animal training data file path');
-cmd:option('-human_data_path','../data/train_face_noIm_minloss.txt','human training data file path');
+cmd:option('-val_data_path','../data_227/test_minloss_horse_old.txt','validation data file path');
+cmd:option('-horse_data_path','../data_227/train_horse_minloss.txt','animal training data file path');
+cmd:option('-human_data_path','../data_227/train_face_noIm_minloss.txt','human training data file path');
 
 cmd:option('dual',true,'true if using warping net loss alongside final loss. false for baselines');
 cmd:option('learningRateDecay',5e-6)
@@ -404,5 +417,6 @@ cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
 cmd:option('augmentation' , true,'true if shuffling and augmenting data');
 cmd:option('-gpu',1,'gpu to run the training on');
+cmd:option('-bgr',true,'switching to bgr mode for imagenet finetuning');
 
 train(cmd:parse(arg));

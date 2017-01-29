@@ -27,6 +27,19 @@ do
 	    	std_im=td.std_im;
 	    end
 
+	    -- add the bgr switch here
+	    -- print ('in forward helper');
+	    -- print (td.bgr);
+	    if td.bgr then
+	    	local midoutputs_clone=midoutputs:clone();
+	    	-- print (midoutputs:size());
+	    	-- print midoutputs[10,1,40,40];
+	    	-- print (midoutputs[{10,{},40,40}]);
+	    	midoutputs[{{},1,{},{}}]=midoutputs_clone[{{},3,{},{}}]
+	    	midoutputs[{{},3,{},{}}]=midoutputs_clone[{{},1,{},{}}]
+	    	-- print (midoutputs[{10,{},40,40}]);
+	    end
+
         midoutputs=tps_helper:switchMeans(midoutputs,td.params.imagenet_mean,mean_im,std_im)
 
 	    local outputs=net:get(2):forward(midoutputs);
@@ -57,11 +70,11 @@ do
 
 	        local binary=batch_targets[{{},{},3}]:clone();
 
-	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary);
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary,td.bgr);
 
 	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},nil,{-1,1},colors,pointSize,binary);
 
-	        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary);
+	        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary,td.bgr);
 
 	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org_nokp.jpg'},nil,{-1,1},colors,-1,binary);
 

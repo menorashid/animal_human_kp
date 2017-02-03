@@ -57,23 +57,15 @@ def us_getErrorsAll(gt_file,out_dir_us,post_us,num_iter,batch_size):
     return errors_all;
 
 def getErrRates(err,thresh=0.1):
-#     vals=[];
-#     total_errRate=[];
-#     for err in zip(errors_all):
     err=np.array(err);
     print type(err);
     sum_errs=np.sum(err>thresh,0).astype(np.float);
     print 'sum_errs',sum_errs;
     total_errs=np.sum(err>=0,0);
-#     print total_errs.shape;
-#     print sum_errs.shape;
     err_rate=sum_errs/total_errs*100.0;
-    # print err_rate;
     sum_errs_tot=np.sum(sum_errs);
     total_errs_tot=np.sum(total_errs);
     err_rate_tot=sum_errs_tot/total_errs_tot*100.0;
-#         total_errRate.append(err_rate_tot);
-#         vals.append(err_rate);
     return err_rate,err_rate_tot;
 
 
@@ -83,35 +75,15 @@ def plotComparisonKpError(errors_all,out_file,ticks,labels,xlabel=None,ylabel=No
     err_check=np.array(errors_all);
     err_rates_all=[];
     for err in errors_all:
-#         print err_check.shape;
         err_rate,err_rate_tot=getErrRates(err);
         err_rate=[err_curr for err_curr in err_rate];
-        # print err_rate;
         if len(ticks)==len(err_rate)+1:
             err_rate.append(err_rate_tot);
         err_rates_all.append(err_rate);
     err_rates_all=np.array(err_rates_all);
-    # print err_rates_all;
-#     assert len(labels)==err_rates_all.shape[1];
     for idx_label_curr,label_curr in enumerate(labels):
         vals[label_curr]=err_rates_all[idx_label_curr,:];
     print vals;
-        
-#     for err_rate_curr,label_curr in zip(err_rate,labels):
-#         vals[label_curr]=err_rate_curr;
-#     for err,label_curr in zip(errors_all,labels):
-#         err=np.array(err);
-#         sum_errs=np.sum(err>thresh,0).astype(np.float);
-#         total_errs=np.sum(err>=0,0);
-# #         print total_errs;
-# #         print sum_errs;
-#         err_rate=sum_errs/total_errs*100.0;
-# #         print err_rate;
-#         vals[label_curr]=list(err_rate);
-#         vals['ALL']=[]
-    
-#     vals[labels[0]].append(11.577);
-#     vals[labels[1]].append(13.75);
 
     if colors is None:
         colors=['b','g'];
@@ -125,55 +97,82 @@ def plotComparisonKpError(errors_all,out_file,ticks,labels,xlabel=None,ylabel=No
         
     visualize.plotGroupBar(out_file,vals,ticks,labels,colors,xlabel=xlabel,ylabel=ylabel,\
                            width=1.0/len(vals),title=title,ylim=ylim);
+    return err_rates_all
 
 
-def saveHTML(out_us,us_test,batch_size=50,num_iter=2):
+def saveHTML(out_us,us_test,batch_size=50,num_iter=2,justHTML=False):
     dir_server='./';
     post_us=['_gt_pts.npy','_pred_pts.npy']
     
     im_paths,gt_pt_files,pred_pt_files=us_getFilePres(us_test,out_us,post_us,num_iter,batch_size);
-    errors_curr=us_getErrorsAll(us_test,out_us,post_us,num_iter,batch_size);
-    err=np.array(errors_curr);
-    bin_keep=err>=0;
-    err[err<0]=0;
-    div=np.sum(bin_keep,1);
-    sum_val=np.sum(err,1).astype(np.float);
-    avg=sum_val/div;
+    if justHTML:
+        post_ims_us=['_org_nokp.jpg','_gt.jpg','_warp_nokp.jpg','_warp.jpg','_org.jpg',];
+        captions_for_row=['Input','Ground Truth','Warped Image','Prediction Warped','Prediction'];
+        out_file_html=os.path.join(out_us,'results.html');
+        
+        idx_sort=range(len(gt_pt_files))
+        ims=[];
+        captions=[];
+        for idx_idx,idx_curr in enumerate(idx_sort):
+            file_curr=gt_pt_files[idx_curr];
+            file_curr=os.path.split(file_curr)[1];
+            file_curr=file_curr[:file_curr.index('_gt')];
+            files_us=[os.path.join(dir_server,file_curr+post_im_curr) for post_im_curr in post_ims_us ];
+            captions_us=[str(idx_idx)+' '+caption_curr for caption_curr in captions_for_row];
+            ims.append(files_us);
+            captions.append(captions_us);
+        
+        visualize.writeHTML(out_file_html,ims,captions);
+        print out_file_html
+    else:
+        errors_curr=us_getErrorsAll(us_test,out_us,post_us,num_iter,batch_size);
+        err=np.array(errors_curr);
+        bin_keep=err>=0;
+        err[err<0]=0;
+        div=np.sum(bin_keep,1);
+        sum_val=np.sum(err,1).astype(np.float);
+        avg=sum_val/div;
 
-    post_ims_us=['_org_nokp.jpg','_gt.jpg','_warp_nokp.jpg','_warp.jpg','_org.jpg',];
-    captions_for_row=['Input','Ground Truth','Warped Image','Prediction Warped','Prediction'];
-    out_file_html=os.path.join(out_us,'results.html');
-    idx_sort=np.argsort(avg)
-    ims=[];
-    captions=[];
-    for idx_idx,idx_curr in enumerate(idx_sort):
-        file_curr=gt_pt_files[idx_curr];
-        file_curr=os.path.split(file_curr)[1];
-        file_curr=file_curr[:file_curr.index('_gt')];
-        files_us=[os.path.join(dir_server,file_curr+post_im_curr) for post_im_curr in post_ims_us ];
-        captions_us=[str(idx_idx)+' '+caption_curr for caption_curr in captions_for_row];
-        ims.append(files_us);
-        captions.append(captions_us);
-    
-    visualize.writeHTML(out_file_html,ims,captions);
-    print out_file_html
+        post_ims_us=['_org_nokp.jpg','_gt.jpg','_warp_nokp.jpg','_warp.jpg','_org.jpg',];
+        captions_for_row=['Input','Ground Truth','Warped Image','Prediction Warped','Prediction'];
+        out_file_html=os.path.join(out_us,'results.html');
+        idx_sort=np.argsort(avg)
+        ims=[];
+        captions=[];
+        for idx_idx,idx_curr in enumerate(idx_sort):
+            file_curr=gt_pt_files[idx_curr];
+            file_curr=os.path.split(file_curr)[1];
+            file_curr=file_curr[:file_curr.index('_gt')];
+            files_us=[os.path.join(dir_server,file_curr+post_im_curr) for post_im_curr in post_ims_us ];
+            captions_us=[str(idx_idx)+' '+caption_curr for caption_curr in captions_for_row];
+            ims.append(files_us);
+            captions.append(captions_us);
+        
+        visualize.writeHTML(out_file_html,ims,captions);
+        print out_file_html
 
-    labels=['Ours','thems'];
-    ticks=['LE','RE','N','LM','RM','ALL'];
-    # 'ALL']
-    colors=['b','g'];
-    ylim=None;
-    errors_all=[];
+        labels=['Ours','thems'];
+        ticks=['LE','RE','N','LM','RM','ALL'];
+        colors=['b','g'];
+        ylim=None;
+        errors_all=[];
 
-    errors_curr=us_getErrorsAll(us_test,out_us,post_us,num_iter,batch_size);
-    failures,failures_kp=getErrRates(errors_curr,0.1)
-    # print failures_kp;
-    errors_all.append(errors_curr)
-    errors_all.append(errors_curr[:])
+        errors_curr=us_getErrorsAll(us_test,out_us,post_us,num_iter,batch_size);
+        failures,failures_kp=getErrRates(errors_curr,0.1)
+        errors_all.append(errors_curr)
+        errors_all.append(errors_curr[:])
 
-    out_file_kp_err=os.path.join(out_us,'bar.pdf');
-    # print 'errors all',errors_all;
-    plotComparisonKpError(errors_all,out_file_kp_err,ticks,labels,colors=colors,ylim=ylim);
+        out_file_kp_err=os.path.join(out_us,'bar.pdf');
+        err_rates_all=plotComparisonKpError(errors_all,out_file_kp_err,ticks,labels,colors=colors,ylim=ylim);
+        out_file_stats=os.path.join(out_us,'stats.txt');
+        print err_rates_all;
+        string=[str(num_curr) for num_curr in err_rates_all[0]];
+        print string
+        # print failures,failures_kp
+        # print errors_all
+        # string=' '.join(string);
+        util.writeFile(out_file_stats,string);
+
 
 
 
@@ -183,14 +182,15 @@ if __name__=='__main__':
     parser.add_option("--test_dir",
                   action="store", type="string",help="dir with test output. specified as out_dir_images in test.th")
     parser.add_option("--test_file",action="store", default="../data/test_minLoss_horse.txt",type="string",help="test data file. specified as val_data_path in test.th")
-    parser.add_option('--batchSize',type=int,default=50,help="batchSize specified in test.th");
+    parser.add_option('--batchSize',type=int,default=100,help="batchSize specified in test.th");
     parser.add_option('--iterations',type=int,default=2,help="iterations specified in test.th");
+    parser.add_option('--justHTML',action="store_true",default=False,help="does not require per im score files");
 
     (options, args) = parser.parse_args()
     # print options;
     # print args;
     # out_us='/home/SSD3/maheen-data/horse_project/test_git/test_full_trained_model/test_images';
     # us_test='../data/test_minLoss_horse.txt';
-    saveHTML(options.test_dir,options.test_file,options.batchSize,options.iterations)
+    saveHTML(options.test_dir,options.test_file,options.batchSize,options.iterations,options.justHTML)
 
     

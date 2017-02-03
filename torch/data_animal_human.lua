@@ -12,6 +12,17 @@ do
         self.mean_file=args.mean_file;
         self.std_file=args.std_file;
         
+        self.soumith_locnet=args.soumith_locnet;
+        self.soumith_mean_file=args.soumith_mean_file;
+        
+        if self.soumith_mean_file and self.soumith_locnet then
+            local meanStd=torch.load(self.soumith_mean_file);
+            self.soumith_std=meanStd.std;
+            self.soumith_mean=meanStd.mean;
+        end
+
+
+        self.soumith=args.soumith;
         self.bgr=args.bgr;
 
         self.start_idx_horse=1;
@@ -25,9 +36,18 @@ do
             self.params.input_size=args.input_size
         end
 
+
+
         if self.mean_file and self.std_file then
-           self.mean_im=image.load(self.mean_file)*255;
-            self.std_im=image.load(self.std_file)*255;
+            if self.soumith then
+                local meanStd=torch.load(self.mean_file);
+                -- print (meanStd);
+                self.std_im=meanStd.std;
+                self.mean_im=meanStd.mean;
+            else
+                self.mean_im=image.load(self.mean_file)*255;
+                self.std_im=image.load(self.std_file)*255;
+            end
         end 
 
         self.training_set_horse={};
@@ -318,8 +338,10 @@ do
 
     function data:processImAndLabel(img_horse,img_human,label_horse,label_human,params)
         
-        img_horse:mul(255);
-        img_human:mul(255);
+        if not self.soumith_locnet then
+            img_horse:mul(255);
+            img_human:mul(255);
+        end
         
         local org_size_horse=img_horse:size();
         local org_size_human=img_human:size();
@@ -375,13 +397,19 @@ do
         end
 
         -- subtract the mean
-        for i=1,img_horse:size()[1] do
-            img_horse[i]:csub(params.mean[i])
+        if not self.soumith_locnet then
+            for i=1,img_horse:size()[1] do
+                img_horse[i]:csub(params.mean[i])
+            end
+
+            for i=1,img_human:size()[1] do
+                img_human[i]:csub(params.mean[i])
+            end
+        else
+            img_horse=self:soumithNormalize(img_horse);
+            img_human=self:soumithNormalize(img_human);
         end
 
-        for i=1,img_human:size()[1] do
-            img_human[i]:csub(params.mean[i])
-        end
 
         return img_horse,img_human,label_horse,label_human
 
@@ -449,7 +477,9 @@ do
 
     function data:processImAndLabelNoIm(img_horse,org_size_human,label_horse,label_human,params)
         
-        img_horse:mul(255);
+        if not self.soumith_locnet then
+            img_horse:mul(255);
+        end
         
         local org_size_horse=img_horse:size();
         
@@ -503,12 +533,30 @@ do
         end
 
         -- subtract the mean
-        for i=1,img_horse:size()[1] do
-            img_horse[i]:csub(params.mean[i])
+        -- print (self.soumith_locnet);
+        if not self.soumith_locnet then
+            for i=1,img_horse:size()[1] do
+                img_horse[i]:csub(params.mean[i])
+            end
+        else
+            -- print ('soumith_normalize');
+            -- print (torch.min(img_horse),torch.max(img_horse));
+            img_horse=self:soumithNormalize(img_horse);
+            -- print (torch.min(img_horse),torch.max(img_horse));
         end
 
         return img_horse,label_horse,label_human
         
+    end
+
+    function data:soumithNormalize(img_curr)
+        assert (self.soumith_std);
+        assert (self.soumith_mean);
+        for i=1,3 do -- channels
+            img_curr[{{i},{},{}}]:add(-self.soumith_mean[i]);
+            img_curr[{{i},{},{}}]:div(self.soumith_std[i]);
+        end
+        return img_curr
     end
 
     function data:addTrainingDataNoIm(training_set_horse,training_set_human,batch_size,lines_horse,lines_human,start_idx_horse,params)
@@ -547,7 +595,7 @@ do
                     img_horse[{3,{},{}}]=img_horse_temp[{1,{},{}}];
                 end
 
-                training_set_horse.data[curr_idx]=img_horse:int();
+                training_set_horse.data[curr_idx]=img_horse;
                 
                 training_set_horse.label[curr_idx]=label_horse;
                 training_set_human.label[curr_idx]=label_human;

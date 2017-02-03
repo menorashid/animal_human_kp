@@ -138,19 +138,23 @@ cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for imag
 cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 cmd:option('-limit',-1,'num of test data to read. negative means all');
 
-cmd:option('-val_data_path','../data_227/test_minloss_horse_old.txt','validation data file path');
-cmd:option('-model_path','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/final/model_all_final.dat');
-cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/test_images');
+cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
+cmd:option('-model_path','temp');
+    -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/final/model_all_final.dat');
+    -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/final/model_all_final.dat');
+cmd:option('-out_dir_images','temp');
+    -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/test_images');
+    -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/test_images');
 
 
 cmd:option('-gpu',1,'gpu to run the training on');
-cmd:option('-bgr',true);
+cmd:option('-bgr',false);
 
 cmd:option('-iterations',2,'num of iterations to run');
 cmd:option('-batchSize',100,'batch size');
 
 
-cmd:option('-face',true,'true if testing a model with no warping network');
+cmd:option('-face',false,'true if testing a model with no warping network');
 
 params = cmd:parse(arg)
 test(params)

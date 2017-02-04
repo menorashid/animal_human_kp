@@ -91,31 +91,51 @@ do
  --  		return training_data;
 	-- end
 
-	function TPS_Helper:switchMeansSoumith(training_data,imagenet_mean,mean,std)
+	function TPS_Helper:switchMeansToSoumith(training_data,imagenet_mean,mean,std)
 		assert (#imagenet_mean==3);
 
   		for i=1,3 do
   			training_data[{{},i,{},{}}]= training_data[{{},i,{},{}}]+imagenet_mean[i];
   		end
-  		
-  		for dim_num=1,3 do
-	  		training_data[{{},{dim_num},{},{}}]:mul(std[dim_num]);
-	        training_data[{{},{dim_num},{},{}}]:add(mean[dim_num]);
-       	end
 
-  -- 		if #training_data:size()~=#mean:size() then
-  -- 			-- print (' not same size',training_data:size(),mean:size())
-  -- 			local mean=mean:view(1,mean:size(1),mean:size(2),mean:size(3));
-		-- 	local std=std:view(1,std:size(1),std:size(2),std:size(3));
-  -- 			mean=torch.repeatTensor(mean,training_data:size(1),1,1,1):type(training_data:type());
-		-- 	std=torch.repeatTensor(std,training_data:size(1),1,1,1):type(training_data:type());
-		-- 	training_data=torch.cdiv((training_data-mean),std);
-		-- else
-		-- 	-- print ('same size',training_data:size(),mean:size());
-		-- 	training_data=torch.cdiv((training_data-mean),std);
-		-- end
-  		
+  		training_data=meanSoumith(training_data,mean,std);
   		return training_data;
+	end
+
+
+	function TPS_Helper:switchMeansFromSoumith(training_data,mean_soumith,std_soumith,mean,std)
+		-- assert (#mean_soumith==3);
+		  		
+  		training_data=self:unMeanSoumith(training_data,mean_soumith,std_soumith);
+  		-- print ('after unmeansoumith');
+  		-- print (torch.min(training_data),torch.max(training_data));
+       	training_data=self:meanVanilla(training_data,mean,std);
+       	-- print ('after meanvanilla');
+       	-- print (torch.min(training_data),torch.max(training_data));
+
+  		return training_data;
+	end
+
+	function TPS_Helper:meanSoumith(training_data,mean,std)
+		training_data:div(255);
+  		for dim_num=1,3 do
+	  		training_data[{{},{dim_num},{},{}}]:add(-mean[dim_num]);
+	  		training_data[{{},{dim_num},{},{}}]:div(std[dim_num]);
+       	end  		
+       	return training_data;
+	end
+
+	function TPS_Helper:meanVanilla(training_data,mean,std)
+		if #training_data:size()~=#mean:size() then
+  			local mean=mean:view(1,mean:size(1),mean:size(2),mean:size(3));
+			local std=std:view(1,std:size(1),std:size(2),std:size(3));
+  			mean=torch.repeatTensor(mean,training_data:size(1),1,1,1):type(training_data:type());
+			std=torch.repeatTensor(std,training_data:size(1),1,1,1):type(training_data:type());
+			training_data=torch.cdiv((training_data-mean),std);
+		else
+			training_data=torch.cdiv((training_data-mean),std);
+		end
+		return training_data;
 	end
 
 	function TPS_Helper:switchMeans(training_data,imagenet_mean,mean,std)
@@ -141,10 +161,11 @@ do
 	end
 
 	function TPS_Helper:unMeanSoumith(training_data,mean,std)
-  		for dim_num=1,3 do
-	  		training_data[{{},{dim_num},{},{}}]:mul(std[dim_num]);
-	        training_data[{{},{dim_num},{},{}}]:add(mean[dim_num]);
-       	end
+		for dim_num=1,3 do
+	  		training_data[{{},{dim_num},{},{}}]=training_data[{{},{dim_num},{},{}}]:mul(std[dim_num]);
+	  	    training_data[{{},{dim_num},{},{}}]=training_data[{{},{dim_num},{},{}}]:add(mean[dim_num]);
+	    end
+       	training_data:mul(255);
   		return training_data;
 	end	
 	

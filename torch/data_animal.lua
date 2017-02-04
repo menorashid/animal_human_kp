@@ -12,6 +12,8 @@ do
         self.rotFix=args.rotFix;
         self.bgr=args.bgr;
         
+        self.soumith=args.soumith;
+
         print ('self.augmentation',self.augmentation);
 
         self.start_idx_horse=1;
@@ -27,8 +29,19 @@ do
            self.params.imagenet_mean={122,117,104};
         end 
         
-        self.mean_im=image.load(self.mean_file)*255;
-        self.std_im=image.load(self.std_file)*255;
+        if self.soumith then
+            local meanStd=torch.load(self.mean_file);
+            -- print (meanStd);
+            self.std_im=meanStd.std;
+            self.mean_im=meanStd.mean;
+            -- print ('mean_im',self.mean_im)
+            -- print ('std_im',self.std_im)
+        else
+        -- if self.mean_file then
+            self.mean_im=image.load(self.mean_file)*255;
+            self.std_im=image.load(self.std_file)*255;
+        end
+        -- end
 
 
 
@@ -180,7 +193,9 @@ do
 
     function data:processImAndLabel(img_horse,label_horse,params)
         
-        img_horse:mul(255);
+        if not self.soumith then
+            img_horse:mul(255);
+        end
         
         local org_size_horse=img_horse:size();
         local label_horse_org=label_horse:clone();
@@ -207,6 +222,12 @@ do
         if self.params.imagenet_mean then
             for i=1,img_horse:size()[1] do
                 img_horse[i]:csub(params.imagenet_mean[i])
+            end
+        elseif self.soumith then
+            -- print 'meaning';
+            for i=1,3 do -- channels
+                img_horse[{{i},{},{}}]:add(-self.mean_im[i]);
+                img_horse[{{i},{},{}}]:div(self.std_im[i]);
             end
         else
             img_horse=torch.cdiv((img_horse-self.mean_im),self.std_im);
@@ -247,7 +268,12 @@ do
                     img_horse[{1,{},{}}]=img_horse_temp[{3,{},{}}];
                     img_horse[{3,{},{}}]=img_horse_temp[{1,{},{}}];
                 end
-                training_set.data[curr_idx]=img_horse:int();
+                -- if self.soumith then
+                    -- print 'floating';
+                training_set.data[curr_idx]=img_horse;
+                -- else
+                --     training_set.data[curr_idx]=img_horse:int();
+                -- end
                 training_set.label[curr_idx]=label_horse;
                 training_set.input[curr_idx]=img_path_horse;
             else

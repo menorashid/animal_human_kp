@@ -107,6 +107,14 @@ function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTota
 
     local loss_mid=nil;
 
+    if td.soumith_locnet then
+        grad_mid=grad_mid:mul(255);
+        for dim_num =1,3 do
+            grad_mid[{{},dim_num,{},{}}]:mul(td.soumith_std[dim_num]);
+        end
+    end
+
+
     if std_im then
         grad_mid=grad_mid:cdiv(std_im);    
     else
@@ -120,13 +128,8 @@ function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTota
 
     if td.bgr then
         local grad_mid_clone=grad_mid:clone();
-        -- print (grad_mid:size())
-        -- print (grad_mid[{10,{},40,40}])
         grad_mid[{{},1,{},{}}]=grad_mid_clone[{{},3,{},{}}];
         grad_mid[{{},3,{},{}}]=grad_mid_clone[{{},1,{},{}}];
-        -- print (grad_mid:size())
-        -- print (grad_mid[{10,{},40,40}])
-
     end
     net:get(1):backward(inputs, grad_mid);
 
@@ -229,7 +232,15 @@ function train(params)
     print ('loading params');
     
     local parameters, gradParameters = net:parameters()
-    local optimStateTotal=getOptimStateTotal(params,parameters,{10,22},logger)
+
+    local pivot;
+    if not params.pivot then
+        pivot={10,22}
+    else
+        pivot=params.pivot
+    end
+
+    local optimStateTotal=getOptimStateTotal(params,parameters,pivot,logger)
 
     logger:writeString(dump.tostring('loading done')..'\n');
     print ('loading done');
@@ -237,29 +248,74 @@ function train(params)
     print (optimState)
 
 
-    local data_params={file_path_horse=params.horse_data_path,
-                        file_path_human=params.human_data_path,
-                        batch_size=params.batchSize,
-                        mean_file=params.mean_im_path,
-                        std_file=params.std_im_path,
-                        augmentation=params.augmentation,
-                        limit=params.limit,
-                        input_size={224,224},
-                        humanImage=false,
-                        bgr=params.bgr};
-                        
-    local td=data_animal_human(data_params);
-    
-    if params.testAfter>0 then
-    	data_params.file_path = params.val_data_path;
-    	data_params.augmentation=false;
-        data_params.imagenet_mean=true;
-    	vd=data_animal(data_params);
-	end
+    local data_params;
+    local td;
+    local vd;
+
+    if params.soumith_locnet then
+        data_params={file_path_horse=params.horse_data_path,
+                    file_path_human=params.human_data_path,
+                    batch_size=params.batchSize,
+
+                    vanilla_mean_file=params.mean_im_path,
+                    vanilla_std_file=params.std_im_path,
+
+                    soumith_locnet=params.soumith_locnet,
+                    soumith_mean_file=params.soumith_mean_file,
+                    
+                    augmentation=params.augmentation,
+                    limit=params.limit,
+                    input_size={224,224},
+                    humanImage=false,
+                    bgr=params.bgr};
+        
+        td=data_animal_human(data_params);
+        
+        if params.testAfter>0 then
+            data_params.file_path = params.val_data_path;
+            data_params.augmentation=false;
+            data_params.imagenet_mean=false;
+            data_params.soumith=params.soumith_locnet;
+            data_params.mean_file=params.soumith_mean_file
+            vd=data_animal(data_params);
+        end
+
+
+    else
+        data_params={file_path_horse=params.horse_data_path,
+                            file_path_human=params.human_data_path,
+                            batch_size=params.batchSize,
+                            mean_file=params.mean_im_path,
+                            std_file=params.std_im_path,
+                            augmentation=params.augmentation,
+                            limit=params.limit,
+                            input_size={224,224},
+                            humanImage=false,
+                            bgr=params.bgr};
+                            
+        td=data_animal_human(data_params);
+        
+        if params.testAfter>0 then
+        	data_params.file_path = params.val_data_path;
+        	data_params.augmentation=false;
+            data_params.imagenet_mean=true;
+        	vd=data_animal(data_params);
+    	end
+
+    end
+
+
     
 
-    local mean_im=td.mean_im:view(1,td.mean_im:size(1),td.mean_im:size(2),td.mean_im:size(3));
-    local std_im=td.std_im:view(1,td.std_im:size(1),td.std_im:size(2),td.std_im:size(3));
+    local mean_im,std_im;
+    if params.soumith_locnet then
+        mean_im=td.vanilla_mean_im:view(1,td.vanilla_mean_im:size(1),td.vanilla_mean_im:size(2),td.vanilla_mean_im:size(3));
+        std_im=td.vanilla_std_im:view(1,td.vanilla_std_im:size(1),td.vanilla_std_im:size(2),td.vanilla_std_im:size(3));
+    else
+        mean_im=td.mean_im:view(1,td.mean_im:size(1),td.mean_im:size(2),td.mean_im:size(3));
+        std_im=td.std_im:view(1,td.std_im:size(1),td.std_im:size(2),td.std_im:size(3));    
+    end
+
     mean_im=torch.repeatTensor(mean_im,td.batch_size,1,1,1):cuda();
     std_im=torch.repeatTensor(std_im,td.batch_size,1,1,1):cuda();
 
@@ -278,11 +334,12 @@ function train(params)
                 counter=counter+1;
                 params.learningRate=params.learningRate/10;
                 optimState.learningRate=params.learningRate;
-                optimStateTotal=getOptimStateTotal(params,parameters,{10,22},logger);
+                optimStateTotal=getOptimStateTotal(params,parameters,pivot,logger);
             end
         end
 
-        local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,                optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im)
+        local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,                
+            optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im)
         
         if not loss_mid then
             loss_mid=train_loss;
@@ -337,6 +394,7 @@ function train(params)
         if i%params.saveAfter==0 then
             local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
             
+            net:clearState();
             torch.save(out_file_intermediate,net);
             
             local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
@@ -360,6 +418,7 @@ function train(params)
 	end
 
     -- save final model
+    net:clearState()
     torch.save(out_file_net,net);   
     npy4th.savenpy(out_file_loss, torch.Tensor(losses))
     
@@ -379,25 +438,25 @@ cmd:text('Options')
 
 local epoch_size=56;
 
-cmd:option('-tps_model_path','temp','localization net path');
+cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/10_3_1e-2/final/model_all_final.dat','localization net path');
 -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr/final/model_all_final.dat'
 cmd:option('-affine',false,'false if using thin plate spline warping');
-cmd:option('-full_model_flag',true,'true if resuming training from full model');
+cmd:option('-full_model_flag',false,'true if resuming training from full model');
 
 -- cmd:option('-tps_model_path','../models/horse_affine_model.dat');
 -- cmd:option('-affine',true);
 -- cmd:option('-full_model_flag',false);
 
-cmd:option('-face_detection_model_path','temp','key point detection network model path');
+cmd:option('-face_detection_model_path','../models/human_face_model.dat','key point detection network model path');
 -- '../models/human_face_model.dat'
-cmd:option('-outDir','temp','directory to save final and intermediate models etc');
+cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2','directory to save final and intermediate models etc');
 -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr'
-cmd:option('learningRate', 1e-3)
+cmd:option('learningRate', 1e-2)
 cmd:option('multiplierBottom',1/100,'learning rate multiplier for beginning layers of localization net');
-cmd:option('multiplierMid',1/10,'learning rate multiplier for last layers of localization net');
+cmd:option('multiplierMid',1/100,'learning rate multiplier for last layers of localization net');
 
 cmd:option('-limit',-1,'num of training data to read. negative means all');
-cmd:option('-iterations',30*epoch_size,'num of iterations to run');
+cmd:option('-iterations',150*epoch_size,'num of iterations to run');
 cmd:option('-saveAfter',30*epoch_size,'num of iterations after which to save model');
 cmd:option('-batchSize',64,'batch size');
 cmd:option('-testAfter',30,'num iterations after which to get validation loss');
@@ -408,10 +467,10 @@ cmd:option('-decreaseAfter',50*epoch_size,'num iterations after which to decreas
 cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
 cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 
-cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
-cmd:option('-horse_data_path','temp','animal training data file path');
--- '../data/train_horse_minloss.txt'
-cmd:option('-human_data_path','temp','human training data file path');
+cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
+cmd:option('-horse_data_path','../data/train_horse_minloss.txt','animal training data file path');
+-- 
+cmd:option('-human_data_path','../data/train_face_noIm_minloss.txt','human training data file path');
 -- '../data/train_face_noIm_minloss.txt'
 
 cmd:option('dual',true,'true if using warping net loss alongside final loss. false for baselines');
@@ -421,6 +480,12 @@ cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
 cmd:option('augmentation' , true,'true if shuffling and augmenting data');
 cmd:option('-gpu',1,'gpu to run the training on');
+
+
+-- all the options for soumith warp, vanilla kp
 cmd:option('-bgr',false,'switching to bgr mode for imagenet finetuning');
+cmd:option('-soumith_locnet',true,'whether the locnet has been pre trained on imagenet using soumith code');
+cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
+cmd:option('-pivot',{0,26});
 
 train(cmd:parse(arg));

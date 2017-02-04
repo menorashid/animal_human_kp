@@ -11,7 +11,8 @@ do
         self.batch_size=args.batch_size;
         self.mean_file=args.mean_file;
         self.std_file=args.std_file;
-        
+        self.vanilla_mean_file=args.vanilla_mean_file
+        self.vanilla_std_file=args.vanilla_std_file
         self.soumith_locnet=args.soumith_locnet;
         self.soumith_mean_file=args.soumith_mean_file;
         
@@ -49,6 +50,12 @@ do
                 self.std_im=image.load(self.std_file)*255;
             end
         end 
+
+        if self.vanilla_mean_file and self.vanilla_std_file then
+
+            self.vanilla_mean_im=image.load(self.vanilla_mean_file)*255;
+            self.vanilla_std_im=image.load(self.vanilla_std_file)*255;           
+        end
 
         self.training_set_horse={};
         self.training_set_human={};

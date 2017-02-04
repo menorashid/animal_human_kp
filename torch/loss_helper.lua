@@ -63,7 +63,25 @@ do
 
 
     function Loss_Helper:getLossD_Euclidean(pred_output_all,gt_output_all)
-        print ('TO DO');
+        
+        local dloss=torch.zeros(pred_output_all:size()):type(pred_output_all:type());
+        for im_idx=1,pred_output_all:size(1) do
+            local gt_output=gt_output_all[im_idx];
+            local pred_output=pred_output_all[im_idx];
+            local gt_index=gt_output[{{},3}];
+            local gt_output=gt_output[{{},{1,2}}]:clone();
+            gt_output=gt_output:view(gt_output:nElement()); 
+
+            local dloss_curr = pred_output-gt_output;
+            dloss_curr=dloss_curr:mul(2);
+            for i=1,dloss_curr:size(1) do
+                if gt_index[math.floor((i+1)/2)]<0 then
+                    dloss_curr[i]=0;
+                end
+            end
+            dloss[im_idx]=dloss_curr;
+        end
+        return dloss;
     end
 
     function Loss_Helper:getLoss_EuclideanTPS(pred_output_all,gt_output_all)

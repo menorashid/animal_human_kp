@@ -12,6 +12,8 @@ do
 	        batch_inputs_view=inputs:double():clone();
 	        if td.soumith_locnet then
 	    		batch_inputs_view=tps_helper:unMeanSoumith(batch_inputs_view,td.soumith_mean,td.soumith_std);
+	    	elseif td.soumith and not td.imagenet_mean then
+	    		batch_inputs_view=tps_helper:unMeanSoumith(batch_inputs_view,td.mean_im,td.std_im);
 	    	end
 	    end  
 
@@ -22,6 +24,8 @@ do
 	    	midoutputs_view=midoutputs:double():clone();
 	    	if td.soumith_locnet then
 	    		midoutputs_view=tps_helper:unMeanSoumith(midoutputs_view,td.soumith_mean,td.soumith_std);
+	    	elseif td.soumith and not td.imagenet_mean then
+	    	    midoutputs_view=tps_helper:unMeanSoumith(midoutputs_view,td.mean_im,td.std_im);
 	    	end
 	    end
 
@@ -39,8 +43,10 @@ do
 	    	midoutputs[{{},3,{},{}}]=midoutputs_clone[{{},1,{},{}}]
 	    end
 
-	    if td.soumith then
+	    if td.soumith and td.imagenet_mean then
 	    	midoutputs=tps_helper:switchMeansToSoumith(midoutputs,td.params.imagenet_mean,mean_im,std_im)
+	    elseif td.soumith and not td.imagenet_mean then
+	    	midoutputs=tps_helper:switchMeansFromSoumith(midoutputs,td.mean_im,td.std_im,mean_im,std_im);
 	    elseif td.soumith_locnet then
 	    	midoutputs=tps_helper:switchMeansFromSoumith(midoutputs,td.soumith_mean,td.soumith_std,mean_im,std_im);
 	    else
@@ -76,6 +82,8 @@ do
 	        local binary=batch_targets[{{},{},3}]:clone();
 	        local imagenet_mean;
 	        if td.soumith_locnet then
+	        	imagenet_mean=nil
+	        elseif td.soumith and not td.imagenet_mean then
 	        	imagenet_mean=nil
 	        else
 	        	imagenet_mean=td.params.imagenet_mean

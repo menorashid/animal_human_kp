@@ -14,6 +14,7 @@ tps_helper=require 'tps_helper';
 visualize=require 'visualize';
 loss_helper=require 'loss_helper';
 forward_helper=require 'forward_helper';
+py = require('fb.python')
 
 function test(params)
     if params.limit<0 then
@@ -50,22 +51,42 @@ function test(params)
     logger:writeString(dump.tostring('done')..'\n');
     print ('done');
 
-    local data_params={file_path=val_data_path,
-                    batch_size=params.batchSize,
-                    mean_file=params.mean_im_path,
-                    std_file=params.std_im_path,
-                    augmentation=false,
-                    limit=params.limit,
-                    input_size={224,224},
-                    imagenet_mean=true};
+    local data_params;
+    local mean_im;
+    local std_im;
+    if params.soumith then
+        data_params={file_path=val_data_path,
+                        batch_size=params.batchSize,
+                        mean_file=params.soumith_mean_file,
+                        std_file=params.soumith_mean_file,
+                        augmentation=false,
+                        limit=params.limit,
+                        input_size={224,224},
+                        imagenet_mean=false,
+                        soumith=params.soumith};
+        mean_im=image.load(params.mean_im_path)*255;
+        std_im=image.load(params.std_im_path)*255;
+    else
+        data_params={file_path=val_data_path,
+                        batch_size=params.batchSize,
+                        mean_file=params.mean_im_path,
+                        std_file=params.std_im_path,
+                        augmentation=false,
+                        limit=params.limit,
+                        input_size={224,224},
+                        imagenet_mean=true};
 
-    if params.face then
-        if params.bgr then
-            data_params.bgr=true;   
-        else
-            data_params.imagenet_mean=false;
+        if params.face then
+            if params.bgr then
+                data_params.bgr=true;   
+            else
+                data_params.imagenet_mean=false;
+            end
         end
+
     end
+
+
     
     local td=data_animal(data_params);
    
@@ -92,6 +113,9 @@ function test(params)
             if params.face then
                 print 'nowarp';
                 loss, loss_all = forward_helper:forward_noWarp(td,net,batch_inputs,batch_targets,saveImage,true);
+            elseif params.soumith then
+                print 'soumith locnet';
+                loss, loss_all = forward_helper:forward(td,net,batch_inputs,batch_targets,saveImage,true,mean_im,std_im);
             else
                 loss,loss_all = forward_helper:forward(td,net,batch_inputs,batch_targets,saveImage,true)
             end
@@ -127,6 +151,25 @@ function test(params)
 
     npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
     npy4th.savenpy(out_file_loss_val_ind, val_losses_ind)
+
+    local python_exec_string = {};
+    python_exec_string[#python_exec_string+1]='python ../python/visualize_results.py';
+    python_exec_string[#python_exec_string+1]='--test_dir';
+    python_exec_string[#python_exec_string+1]=params.out_dir_images;
+    python_exec_string[#python_exec_string+1]='--test_file';
+    python_exec_string[#python_exec_string+1]=params.val_data_path;
+    python_exec_string[#python_exec_string+1]='--batchSize';
+    python_exec_string[#python_exec_string+1]=params.batchSize;
+    python_exec_string[#python_exec_string+1]='--iterations';
+    python_exec_string[#python_exec_string+1]=params.iterations;
+    local py_str='';
+    for str_num=1,#python_exec_string do
+        py_str=py_str..python_exec_string[str_num]..' ';
+    end
+
+    print (py_str);
+    os.execute(py_str)
+    -- py.exec(py_str);
 end
 
 cmd = torch.CmdLine()
@@ -138,11 +181,11 @@ cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for imag
 cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 cmd:option('-limit',-1,'num of test data to read. negative means all');
 
-cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
-cmd:option('-model_path','temp');
+cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
+cmd:option('-model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/final/model_all_final.dat');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/final/model_all_final.dat');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/final/model_all_final.dat');
-cmd:option('-out_dir_images','temp');
+cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/test_images');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/test_images');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/test_images');
 
@@ -155,6 +198,9 @@ cmd:option('-batchSize',100,'batch size');
 
 
 cmd:option('-face',false,'true if testing a model with no warping network');
+
+cmd:option('-soumith',true,'true if testing a model with no warping network');
+cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7','true if testing a model with no warping network');
 
 params = cmd:parse(arg)
 test(params)

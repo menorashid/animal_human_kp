@@ -6,7 +6,7 @@ do
         
     end
 
-	function Forward_Helper:forward(td,net,inputs,batch_targets,saveImage,euclideanLoss,mean_im,std_im)
+	function Forward_Helper:forward(td,net,inputs,batch_targets,saveImage,euclideanLoss,mean_im,std_im,train_euclidean)
 	    local batch_inputs_view;
 	    if saveImage then
 	        batch_inputs_view=inputs:double():clone();
@@ -74,6 +74,9 @@ do
 	    if euclideanLoss then
 	        loss, loss_all = loss_helper:getLoss_Euclidean(t_pts,batch_targets);
 	        dloss=loss_all;
+		elseif train_euclidean then
+			dloss = loss_helper:getLossD_Euclidean(t_pts,batch_targets);
+			loss = loss_helper:getLoss_Euclidean(t_pts,batch_targets);    
 	    else
 	        dloss = loss_helper:getLossD_RCNN(t_pts,batch_targets);
 	        loss = loss_helper:getLoss_RCNN(t_pts,batch_targets);

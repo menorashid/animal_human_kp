@@ -104,7 +104,7 @@ function getOptimStateTotal(params,parameters,layer_pivot,logger)
 end
 
 
-function getNets(net_file,num_ctrl_pts,size_out,affine_flag)
+function getNets(net_file,num_ctrl_pts,size_out,affine_flag,split_net_flag)
     local locnet = torch.load(net_file);
     
     local tranet=nn.Transpose({2,3},{3,4})
@@ -116,6 +116,9 @@ function getNets(net_file,num_ctrl_pts,size_out,affine_flag)
     net:add(concat)
     net:add(nn.BilinearSamplerBHWD())
     net:add(nn.Transpose({3,4},{2,3}))
+    if split_net_flag then
+        net=locnet:get(1);
+    end
 
     local gt_net=nn.Sequential();
     local parnet=nn.ParallelTable();
@@ -175,7 +178,7 @@ function test(params)
     -- print ('loading network');
 
     -- net = torch.load(params.model);
-    local net,gt_net,tps=getNets(params.model,num_ctrl_pts,size_out,params.affine)
+    local net,gt_net,tps=getNets(params.model,num_ctrl_pts,size_out,params.affine,params.split_net)
 
     logger:writeString(dump.tostring('done loading network')..'\n');
     -- print ('done loading network');
@@ -530,7 +533,7 @@ cmd:text('Options')
 
 local epoch_size=275;
 
-cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/10_3_1e-2','directory to save final and intermediate models etc');
+cmd:option('-outDir','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/10_3_1e-2','directory to save final and intermediate models etc');
 
 cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
 -- cmd:option('-model','../models/tps_localization_net_untrained.dat');
@@ -572,13 +575,17 @@ cmd:option('augmentation' , true);
 cmd:option('-gpu',1,'gpu to run the training on');
 
 params = cmd:parse(arg)
-train(params);
+-- train(params);
 
 cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
+-- cmd:option('-model','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/final/model_all_final.dat');
+-- cmd:option('-split_net',true);
+-- cmd:option('-out_dir_images','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/bef_train_warp_test');
 -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/tps_small_data_1e-3_dec_5_eye/matches_5_3531/final/model_all_final.dat');
 -- cmd:option('-soumith_locnet',false);
 -- cmd:option('-soumith_mean_file',false);
 cmd:option('-iterations',2,'num of iterations to run');
 cmd:option('-batchSize',100,'batch size');
+
 params = cmd:parse(arg)
 test(params);

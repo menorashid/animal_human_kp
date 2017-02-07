@@ -324,7 +324,7 @@ function train(params)
         -- also save losses
         if i%params.saveAfter==0 then
             local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
-            
+            net:clearState();
             torch.save(out_file_intermediate,net);
             
             local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
@@ -348,6 +348,7 @@ function train(params)
 	end
 
     -- save final model
+    net:clearState()
     torch.save(out_file_net,net);
     npy4th.savenpy(out_file_loss, torch.Tensor(losses))
     

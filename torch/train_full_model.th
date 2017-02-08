@@ -439,10 +439,11 @@ cmd:text('Options')
 
 local epoch_size=56;
 
-cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/10_3_1e-2/final/model_all_final.dat','localization net path');
-
+cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/tps_net_bgr_224/final/model_all_final.dat','localization net path');
+-- '/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/10_3_1e-2/final/model_all_final.dat'
 -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr/final/model_all_final.dat'
--- cmd:option('-bgr',true,'switching to bgr mode for imagenet finetuning');
+cmd:option('-bgr',true,'switching to bgr mode for imagenet finetuning');
+cmd:option('-pivot',{0,22});
 
 -- /home/SSD3/maheen-data/horse_project
 -- '/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/10_3_1e-2/final/model_all_final.dat'
@@ -456,7 +457,7 @@ cmd:option('-full_model_flag',false,'true if resuming training from full model')
 cmd:option('-face_detection_model_path','../models/human_face_model.dat','key point detection network model path');
 -- cmd:option('-face_detection_model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/intermediate/model_all_5040.dat','key point detection network model path');
 -- '../models/human_face_model.dat'
-cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_.001_euc_5','directory to save final and intermediate models etc');
+cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/full_net_bgr_224/150_50_euc_0.001','directory to save final and intermediate models etc');
 -- /disk2/horse_cvpr/
 -- '/home/SSD3/maheen-data/horse_project
 -- '/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_mb_0'
@@ -477,9 +478,9 @@ cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for imag
 cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 
 cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
-cmd:option('-horse_data_path','../data/train_horse.txt','animal training data file path');
+cmd:option('-horse_data_path','../data/train_horse_minloss.txt','animal training data file path');
 -- 
-cmd:option('-human_data_path','../data/train_face_noIm.txt','human training data file path');
+cmd:option('-human_data_path','../data/train_face_noIm_minloss.txt','human training data file path');
 -- '../data/train_face_noIm_minloss.txt'
 
 cmd:option('dual',true,'true if using warping net loss alongside final loss. false for baselines');
@@ -492,10 +493,10 @@ cmd:option('-gpu',1,'gpu to run the training on');
 
 
 -- all the options for soumith warp, vanilla kp
-cmd:option('-bgr',false,'switching to bgr mode for imagenet finetuning');
-cmd:option('-soumith_locnet',true,'whether the locnet has been pre trained on imagenet using soumith code');
-cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
-cmd:option('-pivot',{0,26});
+-- cmd:option('-bgr',false,'switching to bgr mode for imagenet finetuning');
+-- cmd:option('-soumith_locnet',true,'whether the locnet has been pre trained on imagenet using soumith code');
+-- cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
+-- cmd:option('-pivot',{0,26});
 cmd:option('-train_euclidean',true);
 
 train(cmd:parse(arg));

@@ -224,8 +224,8 @@ function test(params)
             
             td:getTrainingData();
             td.training_set_horse.data=td.training_set_horse.data:cuda();
-            print (torch.min(td.training_set_horse.data),torch.max(td.training_set_horse.data));
-            print (td.training_set_horse.data[{5,{},112,112}]);
+            -- print (torch.min(td.training_set_horse.data),torch.max(td.training_set_horse.data));
+            -- print (td.training_set_horse.data[{5,{},112,112}]);
             td.training_set_horse.label=td.training_set_horse.label:cuda();
             td.training_set_human.label=td.training_set_human.label:cuda();
             local horse_labels,human_labels,batch_inputs,_,_=td:getBatchPoints()
@@ -259,6 +259,12 @@ function test(params)
                 warped_im_pred=tps_helper:unMeanSoumith(warped_im_pred,td.soumith_mean,td.soumith_std):mul(255);
                 batch_inputs=tps_helper:unMeanSoumith(batch_inputs,td.soumith_mean,td.soumith_std):mul(255);
                 -- print (torch.min(warped_im_gt),torch.max(warped_im_gt));
+                -- print (td.params.imagenet_mean)
+            elseif td.params.imagenet_mean then
+
+                warped_im_gt = tps_helper:unMeanImagenet(warped_im_gt,td.params.imagenet_mean,td.bgr);
+                warped_im_pred = tps_helper:unMeanImagenet(warped_im_pred,td.params.imagenet_mean,td.bgr);
+                batch_inputs = tps_helper:unMeanImagenet(batch_inputs,td.params.imagenet_mean,td.bgr);
             end
 
 
@@ -533,16 +539,17 @@ cmd:text('Options')
 
 local epoch_size=275;
 
-cmd:option('-outDir','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/10_3_1e-2','directory to save final and intermediate models etc');
+cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/tps_net_bgr_224','directory to save final and intermediate models etc');
 
 cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
--- cmd:option('-model','../models/tps_localization_net_untrained.dat');
+cmd:option('-model','../models/tps_localization_net_untrained.dat');
+cmd:option('-bgr',true,'switch to bgr for imagenet finetuning');
 cmd:option('affine',false);
 
-cmd:option('-model','../models/imagenet_soumith/model_37_locnet.dat');
-cmd:option('-bgr',false,'switch to bgr for imagenet finetuning');
-cmd:option('-soumith_locnet',true);
-cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
+-- cmd:option('-model','../models/imagenet_soumith/model_37_locnet.dat');
+-- cmd:option('-bgr',false,'switch to bgr for imagenet finetuning');
+-- cmd:option('-soumith_locnet',true);
+-- cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
 
 -- cmd:option('-model','../models/affine_localization_net_untrained.dat');
 -- cmd:option('affine',true);
@@ -551,7 +558,7 @@ cmd:option('-size_out',224,'num of training data to read');
 cmd:option('-limit',-1,'num of training data to read');
 
 cmd:option('-iterations',10*epoch_size,'num of iterations to run');
-cmd:option('-decreaseAfter',3*epoch_size)
+cmd:option('-decreaseAfter',5*epoch_size)
 cmd:option('-saveAfter',3*epoch_size,'num of iterations after which to save model');
 
 cmd:option('-batchSize',64,'batch size');
@@ -564,10 +571,10 @@ cmd:option('-human_data_path','../data/train_face_noIm.txt');
 cmd:option('-val_horse_data_path','../data/test_minLoss_horse.txt');
 cmd:option('-val_human_data_path','../data/test_minLoss_noIm_face.txt');
 
-cmd:option('learningRate', 1e-2)
+cmd:option('learningRate', 1e-3)
 cmd:option('learningRateDecay',5e-6)
 cmd:option('multiplierBottom',1/10);
-cmd:option('pivot',24);
+-- cmd:option('pivot',24);
 cmd:option('beta1', 0.9)
 cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
@@ -575,15 +582,35 @@ cmd:option('augmentation' , true);
 cmd:option('-gpu',1,'gpu to run the training on');
 
 params = cmd:parse(arg)
--- train(params);
+train(params);
 
 cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
--- cmd:option('-model','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/final/model_all_final.dat');
+-- cmd:option('-val_horse_data_path','../data_227/test_minLoss_horse.txt');
+-- cmd:option('-val_human_data_path','../data_227/test_minLoss_noIm_face.txt');
+
+-- -- cmd:option('-val_horse_data_path','../data_227/train_horse_minloss.txt');
+-- -- cmd:option('-val_human_data_path','../data_227/train_face_noIm_minloss.txt');
+
+-- cmd:option('-size_out',227,'num of training data to read');
+
+-- -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr/final/model_all_final.dat');
+-- -- cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr','directory to save final and intermediate models etc');
+-- -- cmd:option('-split_net',false);
+
+-- cmd:option('-model','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/final/model_all_final.dat');
+-- cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/test_warp','directory to save final and intermediate models etc');
 -- cmd:option('-split_net',true);
--- cmd:option('-out_dir_images','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/bef_train_warp_test');
--- cmd:option('-model','/home/SSD3/maheen-data/horse_project/tps_small_data_1e-3_dec_5_eye/matches_5_3531/final/model_all_final.dat');
+
+-- -- cmd:option('-model','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/final/model_all_final.dat');
 -- cmd:option('-soumith_locnet',false);
 -- cmd:option('-soumith_mean_file',false);
+
+-- cmd:option('-bgr',true,'switch to bgr for imagenet finetuning');
+
+-- -- cmd:option('-out_dir_images','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/bef_train_warp_test');
+-- -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/tps_small_data_1e-3_dec_5_eye/matches_5_3531/final/model_all_final.dat');
+-- -- cmd:option('-soumith_locnet',false);
+-- -- cmd:option('-soumith_mean_file',false);
 cmd:option('-iterations',2,'num of iterations to run');
 cmd:option('-batchSize',100,'batch size');
 

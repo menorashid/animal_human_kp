@@ -42,6 +42,7 @@ do
 	    	midoutputs[{{},1,{},{}}]=midoutputs_clone[{{},3,{},{}}]
 	    	midoutputs[{{},3,{},{}}]=midoutputs_clone[{{},1,{},{}}]
 	    end
+	    -- local midoutputs_view_post_sw=midoutputs:clone();
 
 	    if td.soumith and td.imagenet_mean then
 	    	midoutputs=tps_helper:switchMeansToSoumith(midoutputs,td.params.imagenet_mean,mean_im,std_im)
@@ -50,6 +51,7 @@ do
 	    elseif td.soumith_locnet then
 	    	midoutputs=tps_helper:switchMeansFromSoumith(midoutputs,td.soumith_mean,td.soumith_std,mean_im,std_im);
 	    else
+	    	-- print (mean_im:size(),std_im:size(),td.params.imagenet_mean,midoutputs:size(),inputs:size());
         	midoutputs=tps_helper:switchMeans(midoutputs,td.params.imagenet_mean,mean_im,std_im)
         end
 
@@ -99,6 +101,7 @@ do
 	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org_nokp.jpg'},nil,{-1,1},colors,-1,binary);
 
 	        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp_nokp.jpg'},nil,{-1,1},colors,-1,binary);
+	        -- visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view_post_sw,outputs_view:transpose(2,3),{saveImage,'_warp_nokp.jpg'},imagenet_mean,{-1,1},colors,-1,binary);
 	    end
 
 	    local loss;

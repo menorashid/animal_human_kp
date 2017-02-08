@@ -14,7 +14,7 @@ tps_helper=require 'tps_helper';
 visualize=require 'visualize';
 loss_helper=require 'loss_helper';
 forward_helper=require 'forward_helper';
-py = require('fb.python')
+-- py = require('fb.python')
 
 function test(params)
     if params.limit<0 then
@@ -181,11 +181,15 @@ cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for imag
 cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 cmd:option('-limit',-1,'num of test data to read. negative means all');
 
-cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
-cmd:option('-model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/final/model_all_final.dat');
+cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
+cmd:option('-model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_mb_0.001/final/model_all_final.dat');
+    -- '/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_euc/final/model_all_final.dat');
+    -- '/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/final/model_all_final.dat');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/final/model_all_final.dat');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/final/model_all_final.dat');
-cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/test_images');
+cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_mb_0.001/test_images');
+    -- '/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_euc/test_imagest');
+    -- '/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/test_images');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/test_images');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/test_images');
 

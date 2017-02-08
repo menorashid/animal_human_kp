@@ -102,6 +102,21 @@ do
   		return training_data;
 	end
 
+	function TPS_Helper:unMeanImagenet(im_all,mean,bgr)
+		if bgr then
+            local im_all_clone=im_all:clone();
+            im_all[{{},1,{},{}}]=im_all_clone[{{},3,{},{}}]
+            im_all[{{},3,{},{}}]=im_all_clone[{{},1,{},{}}]
+        end
+
+        
+        for idx_rgb=1,3 do
+            im_all[{{},idx_rgb,{},{}}]=im_all[{{},idx_rgb,{},{}}]+mean[idx_rgb];
+        end
+        return im_all;
+    end
+
+
 
 	function TPS_Helper:switchMeansFromSoumith(training_data,mean_soumith,std_soumith,mean,std)
 		-- assert (#mean_soumith==3);

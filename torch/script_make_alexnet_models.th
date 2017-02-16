@@ -1,5 +1,5 @@
 
-
+require 'stn';
 require 'loadcaffe';
 require 'cunn'
 require 'cudnn'
@@ -14,7 +14,7 @@ function makeXavierGaussian(model)
         local m = model.modules[idx]
         if m.weight then
             local var=nil;
-            if m.__typename == 'nn.SpatialConvolution' then
+            if m.__typename == 'nn.SpatialConvolution' or m.__typename == 'cudnn.SpatialConvolution' then
                 var = {m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW}
             elseif m.__typename == 'nn.SpatialConvolutionMM' then
                 var = {m.nInputPlane*m.kH*m.kW, m.nOutputPlane*m.kH*m.kW}
@@ -144,7 +144,7 @@ function saveKPNetForImagenetTraining()
 end
 
 
-function saveSoumithModelForLocnet(model_file)
+function saveSoumithModelForLocnet(model_file,pivot,out_file)
     local model=torch.load(model_file);
     -- print (model);
     local model_second_part=model:get(2);
@@ -154,18 +154,54 @@ function saveSoumithModelForLocnet(model_file)
         model:add(model_second_part:get(i));
     end
     -- print (model);
+    -- model=cudnn.convert(model,nn);
+    print (model);
     model:remove(#model);
     model:remove(#model);
-    local model_new=nn.Sequential();
-    model_new:add(nn.Linear(100,50));
-    model_new=makeXavierGaussian(model_new);
-    model:add(model_new:get(1));
-    -- print (model);
-    -- model=model:cuda();
-    -- local input=torch.zeros(10,3,224,224):cuda();
-    -- local output=model:forward(input);
-    -- print (output:size());
-    local out_file=paths.concat(paths.dirname(model_file),paths.basename(model_file,'.t7')..'_locnet.dat');
+
+    if pivot then
+        local model_new=nn.Sequential();
+        for i=#model,pivot,-1 do
+            print (model:get(i));
+            if model:get(i).weight then
+                print (torch.min(model:get(i).weight),torch.max(model:get(i).weight));
+            end
+            model:get(i):reset();
+            if model:get(i).weight then
+                print (torch.min(model:get(i).weight),torch.max(model:get(i).weight));
+            end
+            model_new:insert(model:get(i),1);
+            -- print (model:get(i))
+            -- print (model:get(i).reset)
+            model:remove(i);
+        end
+        model_new=makeXavierGaussian(model_new); 
+        print (model)
+        print (model_new)
+        for i=1,#model_new do
+            model:add(model_new:get(i));
+        end
+    end
+
+    -- local÷ model_new=nn.Sequential();
+    model:add(nn.Linear(100,50));
+    print (model:get(#model))
+    model:get(#model).weight:fill(0);
+    model:get(#model).bias:fill(0);
+    -- model_new=makeXavierGaussian(model_new);
+    -- model:add(model_new:get(1));
+    print (model);
+    model=model:cuda();
+    local input=torch.zeros(10,3,224,224):cuda();
+    local output=model:forward(input);
+    print (output:size());
+    print (torch.min(model:get(#model).weight),torch.max(model:get(#model).weight))
+    print (torch.min(model:get(#model).bias),torch.max(model:get(#model).bias));
+    
+    -- local out_file
+    if not out_file then
+        out_file=paths.concat(paths.dirname(model_file),paths.basename(model_file,'.t7')..'_locnet.dat');
+    end
     print (out_file);
     model:clearState();
     torch.save(out_file,model);
@@ -175,10 +211,56 @@ function saveSoumithModelForLocnet(model_file)
 end
 
 
+function saveWarpNetBnFix(model_file,out_file,affine_flag)
+    local model=torch.load(model_file);
+    print (model);
+    local layer=model:get(15);
+    model:remove(15);
+    model:insert(layer,14);
+    model:remove(20);
+    model:insert(nn.SpatialBatchNormalization(128),17);
+    local layer=model:get(24);
+    model:remove(24);
+    model:insert(layer,22);
+    print (model);
+    local input=torch.Tensor(10,3,224,224):cuda();
+    model=model:cuda();
+    local output=model:forward(input);
+    print (output:size());
+    model=model:double();
+    model:clearState();
+    torch.save(out_file,model);
+
+end
+
 
 function main()
-    local model_file='../models/imagenet_soumith/model_37.t7';
-    saveSoumithModelForLocnet(model_file);
+    -- local model_file='../models/tps_localization_net_untrained.dat';
+    -- local out_file='../models/tps_localization_net_untrained_bn_fix.dat'
+    -- local model_file='../models/affine_localization_net_untrained.dat';
+    -- local out_file='../models/affine_localization_net_untrained_bn_fix.dat'
+    -- saveWarpNetBnFix(model_file,out_file);
+    
+    local model_file='../models/tps_localization_net_untrained_bn_fix.dat';
+    local out_file='../models/tps_localization_net_untrained_bn_fix_withTPS.dat';
+    local model=torch.load(model_file);
+    local tps=nn.TPSGridGeneratorBHWD(25,224,224);
+    model:add(tps);
+    print (model)
+    model:clearState();
+    torch.save(out_file,model);    
+
+
+    -- local model_file='../models/imagenet_soumith/model_55.t7';
+    -- local out_file='../models/imagenet_soumith/model_55_fc_conv_scratch_locnet.dat';
+    -- local out_file=paths.concat(paths.dirname(model_file),paths.basename(model_file,'.t7')..'_locnet.dat');
+    -- local out_file='../models/tps_localization_net_untrained.dat';
+    -- saveSoumithModelForLocnet(model_file,20,out_file);
+    -- local model=torch.load(out_file);
+    -- print (torch.min(model:get(#model).weight),torch.max(model:get(#model).weight))
+    -- print (torch.min(model:get(#model).bias),torch.max(model:get(#model).bias));
+    -- local model=torch.load('/home/maheenrashid/code/animal_human_kp/models/imagenet_soumith/model_37_locnet.dat');
+    -- print (model);
 
 end
 

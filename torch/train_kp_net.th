@@ -117,7 +117,8 @@ function test(params)
                     augmentation=false,
                     limit=params.limit,
                     input_size={params.inputSize,params.inputSize},
-                    rotFix=params.rotFix};
+                    rotFix=params.rotFix,
+                    soumith=params.soumith};
 
     td=data_animal(data_params);
 
@@ -147,10 +148,38 @@ function test(params)
             
             local outputs_view=outputs:view(outputs:size(1),outputs:size(2)/2,2):clone();
             local batch_inputs_view=batch_inputs:clone():double();
-            batch_inputs_view=tps_helper:unMean(batch_inputs_view,td.mean_im,td.std_im)
+            if td.soumith then
+                for dim_num=1,3 do
+                    -- print ('meaning');
+                    -- print (torch.min(batch_inputs_view),torch.max(batch_inputs_view));
+                    -- print (td.std_im[dim_num]);
+                    batch_inputs_view[{{},{dim_num},{},{}}]:mul(td.std_im[dim_num]);
+                        -- td.std_im[dim_num]);
+                    -- print (torch.min(batch_inputs_view),torch.max(batch_inputs_view));
+                    batch_inputs_view[{{},{dim_num},{},{}}]:add(td.mean_im[dim_num]);
+                    -- print (torch.min(batch_inputs_view),torch.max(batch_inputs_view));
+                    -- 
+                end
+                batch_inputs_view:mul(255);
+            else
+                batch_inputs_view=tps_helper:unMean(batch_inputs_view,td.mean_im,td.std_im)
+            end
             local saveImage=paths.concat(out_dir_images,i..'_');
 
             local binary=batch_targets[{{},{},3}]:clone();
+
+
+            for im_num=1,outputs:size(1) do 
+                local out_file_gt=saveImage..im_num..'_gt_pts.npy';
+                local out_file_pred=saveImage..im_num..'_pred_pts.npy';
+
+                local pred_output=outputs[im_num]:clone():double();
+                local gt_output=batch_targets[im_num]:clone():double();
+                pred_output=pred_output:view(pred_output:size(1)/2,2);
+                npy4th.savenpy(out_file_gt,gt_output);
+                npy4th.savenpy(out_file_pred,pred_output);
+
+            end
 
             visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,outputs_view:transpose(2,3),{saveImage,'_org.jpg'},nil,{-1,1},colors,pointSize,binary);
 
@@ -271,7 +300,8 @@ function main(params)
 					augmentation=params.augmentation,
 					limit=params.limit,
                     input_size={params.inputSize,params.inputSize},
-                    rotFix=params.rotFix};
+                    rotFix=params.rotFix,
+                    soumith=params.soumith};
 
 	td=data_animal(data_params);
 
@@ -348,6 +378,7 @@ function main(params)
         -- also save losses
         if i%params.saveAfter==0 then
             local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
+            net:clearState();
             torch.save(out_file_intermediate,net);
             local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
             npy4th.savenpy(out_file_loss_intermediate, torch.Tensor(losses))
@@ -361,10 +392,11 @@ function main(params)
         if i%params.dispPlotAfter==0 then
             visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_plot);
         end
-
+        -- break;
 	end
 
     -- save final model
+    net:clearState();
     torch.save(out_file_net,net);
     npy4th.savenpy(out_file_loss, torch.Tensor(losses))
     
@@ -372,6 +404,9 @@ function main(params)
         npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
     end
     visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_plot);
+    net=nil;
+    collectgarbage();
+
 end
 
 
@@ -385,15 +420,15 @@ cmd:text('Options')
 local epoch_size=56;
 -- 56;
 
-cmd:option('-model','../models/vanilla_scratch_bn_large.dat');
+cmd:option('-model','/disk2/horse_cvpr/ft_kp_imagenet/model_17_mod.dat');
 
 cmd:option('-inputSize',224,'size of input image');
-cmd:option('-mean_im_path','../data/horse_mean.png');
-cmd:option('-std_im_path','../data/horse_std.png');
-
+cmd:option('-mean_im_path','/disk2/horse_cvpr/ft_kp_imagenet/meanstdCache.t7');
+cmd:option('-std_im_path','/disk2/horse_cvpr/ft_kp_imagenet/meanstdCache.t7');
+cmd:option('-soumith',false);
 
 cmd:option('-limit',-1,'num of training data to read');
-cmd:option('-iterations',300*epoch_size,'num of iterations to run');
+cmd:option('-iterations',180*epoch_size,'num of iterations to run');
 cmd:option('-saveAfter',30*epoch_size,'num of iterations after which to save model');
 cmd:option('-batchSize',64,'batch size');
 cmd:option('-testAfter',30,'num iterations after which to get validation loss');
@@ -410,18 +445,51 @@ cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
 cmd:option('augmentation' , true);
 
-cmd:option('decreaseAfter',100*epoch_size);
+cmd:option('decreaseAfter',50*epoch_size);
 cmd:option('-gpu',1,'gpu to run the training on');
 cmd:text()
 
-cmd:option('-outDir','/disk2/horse_cvpr/scratch_rebuttal');
+cmd:option('-outDir','/disk2/horse_cvpr/ft_kp_imagenet');
 params = cmd:parse(arg)
 main(params);
 
-cmd:option('-iterations',2,'num of iterations to run');
-cmd:option('-batchSize',100,'batch size');
-cmd:option('-outDirTest',paths.concat(params.outDir,'test_images'));
-cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
-params = cmd:parse(arg)
-test(params);
+-- cmd:option('-iterations',2,'num of iterations to run');
+-- cmd:option('-batchSize',100,'batch size');
+-- cmd:option('-outDirTest',paths.concat(params.outDir,'test_images'));
+-- cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
+-- params = cmd:parse(arg)
+-- test(params);
 
+local python_exec_string = {};
+python_exec_string[#python_exec_string+1]='th test.th';
+python_exec_string[#python_exec_string+1]='-mean_im_path';
+python_exec_string[#python_exec_string+1]=params.mean_im_path;
+python_exec_string[#python_exec_string+1]='-std_im_path';
+python_exec_string[#python_exec_string+1]=params.std_im_path;
+python_exec_string[#python_exec_string+1]='-batchSize';
+python_exec_string[#python_exec_string+1]=100;
+python_exec_string[#python_exec_string+1]='-iterations';
+python_exec_string[#python_exec_string+1]=2;
+python_exec_string[#python_exec_string+1]='-val_data_path';
+python_exec_string[#python_exec_string+1]='../data/test_minloss_horse_old.txt';
+python_exec_string[#python_exec_string+1]='-model_path';
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'final/model_all_final.dat');
+python_exec_string[#python_exec_string+1]='-out_dir_images';
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'test_images');
+python_exec_string[#python_exec_string+1]='-face';
+if params.bgr then
+    python_exec_string[#python_exec_string+1]='-bgr';
+end
+if params.soumith then
+    python_exec_string[#python_exec_string+1]='-soumith';
+    python_exec_string[#python_exec_string+1]='-soumith_mean_file';
+    python_exec_string[#python_exec_string+1]=params.mean_im_path;
+end
+
+local py_str='';
+for str_num=1,#python_exec_string do
+    py_str=py_str..python_exec_string[str_num]..' ';
+end
+
+print (py_str);
+os.execute(py_str)

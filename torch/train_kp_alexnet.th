@@ -239,6 +239,7 @@ function main(params)
         -- also save losses
         if i%params.saveAfter==0 then
             local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
+            net:clearState();
             torch.save(out_file_intermediate,net);
             local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
             npy4th.savenpy(out_file_loss_intermediate, torch.Tensor(losses))
@@ -257,6 +258,7 @@ function main(params)
 	end
 
     -- save final model
+    net:clearState();
     torch.save(out_file_net,net);
     npy4th.savenpy(out_file_loss, torch.Tensor(losses))
     
@@ -264,7 +266,8 @@ function main(params)
         npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
     end
     visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_plot);
-
+    net=nil;
+    collectgarbage()
 end
 
 cmd = torch.CmdLine()
@@ -317,3 +320,36 @@ main(params);
 -- params = cmd:parse(arg)
 -- test(params);
 
+local python_exec_string = {};
+python_exec_string[#python_exec_string+1]='th test.th';
+python_exec_string[#python_exec_string+1]='-mean_im_path';
+python_exec_string[#python_exec_string+1]=params.mean_im_path;
+python_exec_string[#python_exec_string+1]='-std_im_path';
+python_exec_string[#python_exec_string+1]=params.std_im_path;
+python_exec_string[#python_exec_string+1]='-batchSize';
+python_exec_string[#python_exec_string+1]=100;
+python_exec_string[#python_exec_string+1]='-iterations';
+python_exec_string[#python_exec_string+1]=2;
+python_exec_string[#python_exec_string+1]='-val_data_path';
+python_exec_string[#python_exec_string+1]='../data_227/test_minloss_horse_old.txt';
+python_exec_string[#python_exec_string+1]='-model_path';
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'final/model_all_final.dat');
+python_exec_string[#python_exec_string+1]='-out_dir_images';
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'test_images');
+python_exec_string[#python_exec_string+1]='-face';
+if params.bgr then
+    python_exec_string[#python_exec_string+1]='-bgr';
+end
+if params.soumith then
+    python_exec_string[#python_exec_string+1]='-soumith';
+    python_exec_string[#python_exec_string+1]='-soumith_mean_file';
+    python_exec_string[#python_exec_string+1]=params.mean_im_path;
+end
+
+local py_str='';
+for str_num=1,#python_exec_string do
+    py_str=py_str..python_exec_string[str_num]..' ';
+end
+
+print (py_str);
+os.execute(py_str)

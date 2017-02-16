@@ -1,0 +1,204 @@
+require 'cunn'
+require 'cudnn'
+require 'nn';
+require 'stn'
+
+function vision3(out_dir,bgr,euc,mm,mb,nn,model,iterations,decreaseAfter,learningRate)
+	local python_exec_string = {};
+    python_exec_string[#python_exec_string+1]='th train_full_model.th';
+    
+    python_exec_string[#python_exec_string+1]='-outDir';
+    python_exec_string[#python_exec_string+1]=out_dir;
+
+    if bgr then
+	    python_exec_string[#python_exec_string+1]='-tps_model_path';
+	    python_exec_string[#python_exec_string+1]='/disk2/horse_cvpr/tps_net_bgr_224/final/model_all_final.dat';
+	    python_exec_string[#python_exec_string+1]='-bgr';
+	    python_exec_string[#python_exec_string+1]='-pivot_b';
+	    python_exec_string[#python_exec_string+1]=10;
+	    python_exec_string[#python_exec_string+1]='-pivot_u';
+	    python_exec_string[#python_exec_string+1]=22;
+
+	    -- python_exec_string[#python_exec_string+1]='-pivot';
+	    -- python_exec_string[#python_exec_string+1]='{10,22}';
+   	end
+
+   	if euc then
+   		python_exec_string[#python_exec_string+1]='-train_euclidean';
+   	end
+
+   	python_exec_string[#python_exec_string+1]='multiplierMid';
+    python_exec_string[#python_exec_string+1]=mm;
+	    
+    python_exec_string[#python_exec_string+1]='multiplierBottom';
+    python_exec_string[#python_exec_string+1]=mb;
+	
+    if nn==5 then
+    	python_exec_string[#python_exec_string+1]='-horse_data_path';
+    	python_exec_string[#python_exec_string+1]='../data/train_horse.txt';
+		python_exec_string[#python_exec_string+1]='-human_data_path';
+		python_exec_string[#python_exec_string+1]='../data/train_face_noIm.txt';
+    else
+    	python_exec_string[#python_exec_string+1]='-horse_data_path';
+    	python_exec_string[#python_exec_string+1]='../data/train_horse_minloss.txt';
+		python_exec_string[#python_exec_string+1]='-human_data_path';
+		python_exec_string[#python_exec_string+1]='../data/train_face_noIm_minloss.txt';
+    end
+    
+    if model then
+    	python_exec_string[#python_exec_string+1]='-face_detection_model_path';
+    	python_exec_string[#python_exec_string+1]=model;
+    	python_exec_string[#python_exec_string+1]='-full_model_flag';
+    end
+
+    if iterations then
+    	python_exec_string[#python_exec_string+1]='-iterations'
+    	python_exec_string[#python_exec_string+1]=iterations;
+    end
+
+    if decreaseAfter then
+    	python_exec_string[#python_exec_string+1]='-decreaseAfter'
+    	python_exec_string[#python_exec_string+1]=decreaseAfter;
+    end
+    
+    if learningRate then
+    	python_exec_string[#python_exec_string+1]='learningRate'
+    	python_exec_string[#python_exec_string+1]=learningRate;
+    end
+
+	local py_str='';
+    for str_num=1,#python_exec_string do
+        py_str=py_str..python_exec_string[str_num]..' ';
+    end
+	
+	print (py_str);
+	-- os.execute(py_str)
+    
+end
+
+function vision3_meta()
+	epoch_size=56;
+
+	out_dir='/disk2/horse_cvpr/full_net_bgr_224/150_50_rcnn_0.1_0.01_5nn';
+	bgr=true;
+	euc=false;
+	mm=1/10;
+	mb=1/100;
+	nn=5;
+
+	-- vision3(out_dir,bgr,euc,mm,mb,nn)
+
+	out_dir='/disk2/horse_cvpr/full_net_bgr_224/150_50_rcnn_0.1_0.01_5nn';
+	nn=5;
+
+	dir_meta='/disk2/horse_cvpr/full_net_bgr_224';
+	-- out_dirs={'150_50_euc_0.001','150_50_euc_0.001_5nn','150_50_euc_0.1_0.01','150_50_euc_0.1_0.01_5nn'}
+	-- nns={1,5,1,5};
+	-- mms={1/1000,1/1000,1/10,1/10};
+	-- mbs={1/1000,1/1000,1/100,1/100}
+	-- for idx_curr=1,#out_dirs do
+	-- 	-- print ('');
+	-- 	-- print ('');
+	-- 	-- print ('');
+	-- 	out_dir=paths.concat(dir_meta,out_dirs[idx_curr]);
+	-- 	nn=nns[idx_curr];
+	-- 	mm=mms[idx_curr];
+	-- 	mb=mbs[idx_curr];
+	-- 	model=paths.concat(out_dir,'intermediate/model_all_5040.dat');
+	-- 	out_dir=paths.concat(out_dir,'resume_50');
+	-- 	learningRate=1e-3;
+	-- 	decreaseAfter=10*epoch_size;
+	-- 	iterations=60*epoch_size;
+	-- 	bgr=true;
+	-- 	euc=true;
+	-- 	vision3(out_dir,bgr,euc,mm,mb,nn,model,iterations,decreaseAfter,learningRate)
+
+
+	-- end
+
+	-- out_dir='/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.01_0.001_5nn';
+	-- bgr=true;
+	-- euc=true;
+	-- mm=1/100;
+	-- mb=1/1000;
+	-- nn=5;
+
+	-- vision3(out_dir,bgr,euc,mm,mb,nn)
+	-- print (' ')
+	-- out_dir='/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.01_0.001';
+	-- bgr=true;
+	-- euc=true;
+	-- mm=1/100;
+	-- mb=1/1000;
+	-- nn=1;
+
+	-- vision3(out_dir,bgr,euc,mm,mb,nn)
+
+	-- out_dirs={'150_50_euc_0.01_0.001','150_50_euc_0.01_0.001_5nn'}
+	-- nns={1,5};
+	-- mms={1/100,1/100};
+	-- mbs={1/1000,1/1000}
+	out_dirs={'150_50_rcnn_0.1_0.01_5nn'};
+	nns={5};
+	mms={1/10};
+	mbs={1/100}
+
+	for idx_curr=1,#out_dirs do
+		-- print ('');
+		-- print ('');
+		-- print ('');
+		out_dir=paths.concat(dir_meta,out_dirs[idx_curr]);
+		nn=nns[idx_curr];
+		mm=mms[idx_curr];
+		mb=mbs[idx_curr];
+		model=paths.concat(out_dir,'intermediate/model_all_5040.dat');
+		out_dir=paths.concat(out_dir,'resume_50');
+		learningRate=1e-3;
+		decreaseAfter=10*epoch_size;
+		iterations=60*epoch_size;
+		bgr=true;
+		euc=false;
+		vision3(out_dir,bgr,euc,mm,mb,nn,model,iterations,decreaseAfter,learningRate)
+
+
+	end
+
+	-- vision3();
+end
+
+
+function shrinkModelFiles(dir_meta)
+	for dir_exp in paths.iterdirs(dir_meta) do
+		local dir_curr=paths.concat(dir_meta,dir_exp);
+		for dir_small_data in paths.iterdirs(dir_curr) do
+			local dir_small_data=paths.concat(dir_curr,dir_small_data);
+
+
+
+
+				for file_curr in paths.iterfiles(dir_small_data) do
+					-- print (file_curr,paths.extname(file_curr));
+					if paths.extname(file_curr)=='dat' then
+
+						local model_file =paths.concat(dir_small_data,file_curr)
+						print (model_file);
+						local net=torch.load(model_file);
+						net:clearState();
+						torch.save(model_file,net);
+					end
+				end
+		end
+	end
+end
+
+function main()
+	local dir_data='/home/SSD3/maheen-data/horse_project'
+	-- local dir_meta=paths.concat(dir_data,'full_system_small_data_eye_1e-2_10_100');
+	-- local dir_meta=paths.concat(dir_data,'full_system_small_data_eye_1e-2_10_100_affine');
+	-- local dir_meta=paths.concat(dir_data,'face_baselines_small_data_tps_200_1e-4_100');
+	local dir_meta=paths.concat(dir_data,'face_baselines_small_data_affine_200_1e-3_100');
+	shrinkModelFiles(dir_meta);
+
+end
+
+main();

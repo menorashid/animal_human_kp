@@ -74,7 +74,8 @@ function test(params)
                         augmentation=false,
                         limit=params.limit,
                         input_size={224,224},
-                        imagenet_mean=true};
+                        imagenet_mean=true,
+                        bgr=params.bgr};
 
         if params.face then
             if params.bgr then
@@ -182,15 +183,20 @@ cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image p
 cmd:option('-limit',-1,'num of test data to read. negative means all');
 
 cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
-cmd:option('-model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_mb_0.001/final/model_all_final.dat');
+cmd:option('-model_path','/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.1_0.01_5nn/final/model_all_final.dat');
+cmd:option('-out_dir_images','/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.1_0.01_5nn/test_images');
+    -- '/disk2/horse_cvpr/full_model_euc/final/model_all_final.dat');
+    -- 
     -- '/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_euc/final/model_all_final.dat');
     -- '/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/final/model_all_final.dat');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/final/model_all_final.dat');
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/final/model_all_final.dat');
-cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_mb_0.001/test_images');
+
+    -- '/disk2/horse_cvpr/full_model_euc/test_images');
+    -- '/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_mb_0.001/test_images');
     -- '/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2_euc/test_imagest');
     -- '/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/test_images');
-    -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/test_images');
+    -- 
     -- '/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/alexnet_fc_scratch_ft/test_images');
 
 
@@ -203,7 +209,7 @@ cmd:option('-batchSize',100,'batch size');
 
 cmd:option('-face',false,'true if testing a model with no warping network');
 
-cmd:option('-soumith',true,'true if testing a model with no warping network');
+cmd:option('-soumith',false,'true if testing a model with no warping network');
 cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7','true if testing a model with no warping network');
 
 params = cmd:parse(arg)

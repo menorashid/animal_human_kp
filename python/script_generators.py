@@ -173,9 +173,9 @@ def script_tpsUs(vision1=False):
         out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
     else:
         out_dir_pre_pre='/disk2/horse_cvpr'
-    out_dir_pre=os.path.join(out_dir_pre_pre,'tps_nets_bn_fix/horse_')
+    out_dir_pre=os.path.join(out_dir_pre_pre,'tps_nets_no_bn_fix/horse_')
     torch_file='train_warping_net.th';
-    out_file_script='../scripts/train_warping_small_data';
+    out_file_script='../scripts/train_warping_small_data_no_bn_fix';
     num_scripts=2;
     commands=[];
     for num_data_curr in num_data:
@@ -183,6 +183,7 @@ def script_tpsUs(vision1=False):
         command_curr.extend(['-outDir',out_dir_pre+str(num_data_curr)]);
         command_curr.extend(['-horse_data_path',file_data_pre+str(num_data_curr)+'_horse.txt']);
         command_curr.extend(['-human_data_path',file_data_pre+str(num_data_curr)+'_face_noIm.txt']);
+        command_curr.extend(['-model','../models/tps_localization_net_untrained.dat']);
         command_curr=' '.join(command_curr);
         commands.append(command_curr);
 
@@ -199,18 +200,17 @@ def script_tpsUs(vision1=False):
 def script_full_us_tps(vision1=False):
 
     # num_data=range(500,3500,500);
-    num_data=[3531]
-    # ,500,2500,1000,2000,1500]
+    num_data=[3000,500,2500,1000,2000,1500]
     file_data_pre='../data/small_datasets/matches_5_';
     if vision1:
         out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
     else:
         out_dir_pre_pre='/disk2/horse_cvpr'
-    out_dir_pre=os.path.join(out_dir_pre_pre,'full_nets_us_bn_fix/horse_')
-    out_dir_tps_meta=os.path.join(out_dir_pre_pre,'tps_nets_bn_fix/horse_')
+    out_dir_pre=os.path.join(out_dir_pre_pre,'full_nets_us_no_bn_fix/horse_')
+    out_dir_tps_meta=os.path.join(out_dir_pre_pre,'tps_nets_no_bn_fix/horse_')
     torch_file='train_full_model.th';
     out_file_script='../scripts/train_full_model_us_small_data';
-    num_scripts=1;
+    num_scripts=2;
     commands=[];
     
 
@@ -225,7 +225,7 @@ def script_full_us_tps(vision1=False):
         command_curr.extend(['-tps_model_path',os.path.join(out_dir_tps_meta+str(num_data_curr),'final','model_all_final.dat')]);
         command_curr.extend(['-outDir',out_dir_pre+str(num_data_curr)]);
         command_curr.extend(['-bgr']);
-        command_curr.extend(['-dual']);
+        command_curr.extend(['dual']);
         command_curr=' '.join(command_curr);
         commands.append(command_curr);
 
@@ -247,10 +247,10 @@ def script_bl_tps(vision1=False):
         out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
     else:
         out_dir_pre_pre='/disk2/horse_cvpr'
-    out_dir_pre=os.path.join(out_dir_pre_pre,'bl_tps_small_data/horse_')
+    out_dir_pre=os.path.join(out_dir_pre_pre,'bl_tps_small_data_no_bn_fix/horse_')
     torch_file='train_full_model.th';
-    out_file_script='../scripts/train_full_model_us_small_data';
-    tps_model_path='../models/tps_localization_net_untrained_bn_fix_withTPS.dat'
+    out_file_script='../scripts/bl_tps_small_data_no_bn_fix';
+    tps_model_path='../models/tps_localization_net_untrained_withTPS.dat'
     num_scripts=2;
     commands=[];
     epoch_size=56;
@@ -285,10 +285,62 @@ def script_bl_tps(vision1=False):
         print commands;
         util.writeFile(out_file_script_curr,commands);
     
+def script_bl_tps_resume():
+    # num_data=range(500,3500,500)+[3531];
+    num_data=[3531,500,3000,1000,2500,1500]
+    file_data_pre='../data/small_datasets/matches_5_';
+    if vision1:
+        out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
+    else:
+        out_dir_pre_pre='/disk2/horse_cvpr'
+    out_dir_pre=os.path.join(out_dir_pre_pre,'bl_tps_small_data_no_bn_fix/horse_')
+    torch_file='train_full_model.th';
+    out_file_script='../scripts/bl_tps_small_data_no_bn_fix_resume';
+    tps_model_path='../models/tps_localization_net_untrained_withTPS.dat'
+    num_scripts=2;
+    commands=[];
+    epoch_size=56;
 
+    for num_data_curr in num_data:
+        command_curr=['th',torch_file];
+        out_dir_in=out_dir_pre+str(num_data_curr);
+        out_dir_out=os.path.join(out_dir_in,'resume_60');
+        if num_data_curr<2000:
+            command_curr.extend(['learningRate',str(1e-5)]);
+        else:
+            command_curr.extend(['learningRate',str(1e-4)]);
+        command_curr.extend(['multiplierMid',str(1)]);
+        command_curr.extend(['multiplierBottom',str(0.01)]);
+        
+        command_curr.extend(['-iterations',str(140*epoch_size)]);
+        command_curr.extend(['-decreaseAfter',str(60*epoch_size)]);
+
+        command_curr.extend(['-horse_data_path',file_data_pre+str(num_data_curr)+'_horse_minloss.txt']);
+        command_curr.extend(['-human_data_path',file_data_pre+str(num_data_curr)+'_face_noIm_minloss.txt']);
+        command_curr.extend(['-numDecrease',str(1)]);
+        command_curr.extend(['-tps_model_path',tps_model_path]);
+
+        command_curr.extend(['-outDir',out_dir_out]);
+
+        command_curr.extend(['-bgr']);
+
+        command_curr.extend(['-full_model_flag']);
+        command_curr.extend(['-face_detection_model_path',os.path.join(out_dir_in,'intermediate','model_all_3360.dat')]);
+        command_curr=' '.join(command_curr);
+        commands.append(command_curr);
+
+    commands=np.array(commands);
+    commands_split=np.array_split(commands,num_scripts);
+    for idx_commands,commands in enumerate(commands_split):
+        out_file_script_curr=out_file_script+'_'+str(idx_commands)+'.sh';
+        print idx_commands
+        print out_file_script_curr
+        print commands;
+        util.writeFile(out_file_script_curr,commands);
 
 def main():
-    script_bl_tps(True);
+    script_bl_tps_resume(False);
+    # script_full_us_tps(True);
     # script_tpsUs(True);
     # copySmallDatatoVision3();
     # rerun_5040_bl_ft();

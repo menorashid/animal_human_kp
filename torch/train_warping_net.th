@@ -148,7 +148,7 @@ function test(params)
     if params.limit<0 then
         params.limit=nil;
     end
-
+    params.model=paths.concat(out_dir,'final/model_all_final.dat');
     paths.mkdir(out_dir);
     local out_dir_images;
 
@@ -178,6 +178,8 @@ function test(params)
     -- print ('loading network');
 
     -- net = torch.load(params.model);
+    -- print (net);
+    -- print(params.model)
     local net,gt_net,tps=getNets(params.model,num_ctrl_pts,size_out,params.affine,params.split_net)
 
     logger:writeString(dump.tostring('done loading network')..'\n');
@@ -255,9 +257,9 @@ function test(params)
             if td.soumith_locnet then
                 -- print (td.soumith_std,td.soumith_mean);
                 -- print (torch.min(warped_im_gt),torch.max(warped_im_gt));
-                warped_im_gt=tps_helper:unMeanSoumith(warped_im_gt,td.soumith_mean,td.soumith_std):mul(255);
-                warped_im_pred=tps_helper:unMeanSoumith(warped_im_pred,td.soumith_mean,td.soumith_std):mul(255);
-                batch_inputs=tps_helper:unMeanSoumith(batch_inputs,td.soumith_mean,td.soumith_std):mul(255);
+                warped_im_gt=tps_helper:unMeanSoumith(warped_im_gt,td.soumith_mean,td.soumith_std);
+                warped_im_pred=tps_helper:unMeanSoumith(warped_im_pred,td.soumith_mean,td.soumith_std);
+                batch_inputs=tps_helper:unMeanSoumith(batch_inputs,td.soumith_mean,td.soumith_std);
                 -- print (torch.min(warped_im_gt),torch.max(warped_im_gt));
                 -- print (td.params.imagenet_mean)
             elseif td.params.imagenet_mean then
@@ -314,6 +316,26 @@ function test(params)
 
     npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
     npy4th.savenpy(out_file_loss_val_ind, val_losses_ind)
+
+    local python_exec_string = {};
+    python_exec_string[#python_exec_string+1]='python ../python/visualize_results.py';
+    python_exec_string[#python_exec_string+1]='--test_dir';
+    python_exec_string[#python_exec_string+1]=out_dir_images;
+    python_exec_string[#python_exec_string+1]='--test_file';
+    python_exec_string[#python_exec_string+1]=params.val_horse_data_path;
+    python_exec_string[#python_exec_string+1]='--batchSize';
+    python_exec_string[#python_exec_string+1]=params.batchSize;
+    python_exec_string[#python_exec_string+1]='--iterations';
+    python_exec_string[#python_exec_string+1]=params.iterations;
+    python_exec_string[#python_exec_string+1]='--justHTML';
+    local py_str='';
+    for str_num=1,#python_exec_string do
+        py_str=py_str..python_exec_string[str_num]..' ';
+    end
+
+    print (py_str);
+    os.execute(py_str)
+
 end
 
 function train(params) 
@@ -440,6 +462,7 @@ function train(params)
         
         if params.decreaseAfter then
             if i%params.decreaseAfter==0 and counter==0 then
+                counter=counter+1;
                 params.learningRate=params.learningRate/10;
                 optimState.learningRate=params.learningRate;
                 optimStateTotal=getOptimStateTotal(params,parameters,pivot,logger);
@@ -514,7 +537,7 @@ function train(params)
         if i%params.dispPlotAfter==0 then
             visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_plot);
         end
-
+        -- break;
     end
 
     -- save final model
@@ -526,7 +549,8 @@ function train(params)
         npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
     end
     visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_plot);
-
+    net=nil;
+    collectgarbage()
 end
 
 
@@ -539,14 +563,24 @@ cmd:text('Options')
 
 local epoch_size=275;
 
-cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/tps_net_bgr_224','directory to save final and intermediate models etc');
-
 cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
 cmd:option('-model','../models/tps_localization_net_untrained.dat');
 cmd:option('-bgr',true,'switch to bgr for imagenet finetuning');
 cmd:option('affine',false);
 
--- cmd:option('-model','../models/imagenet_soumith/model_37_locnet.dat');
+cmd:option('-outDir','/disk2/horse_cvpr/tps_nets_bn_fix/horse_3531','directory to save final and intermediate models etc');
+-- cmd:option('-model','../models/imagenet_soumith/model_55_locnet.dat');
+-- cmd:option('pivot',24);
+
+-- cmd:option('-outDir','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/10_3_1e-2_55_eye_fc','directory to save final and intermediate models etc');
+-- cmd:option('-model','../models/imagenet_soumith/model_55_fc_scratch_locnet.dat');
+-- cmd:option('pivot',20);
+
+-- cmd:option('-outDir','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/10_3_1e-2_55_eye_fc_conv','directory to save final and intermediate models etc');
+-- cmd:option('-model','../models/imagenet_soumith/model_55_fc_conv_scratch_locnet.dat');
+-- cmd:option('pivot',16);
+
+
 -- cmd:option('-bgr',false,'switch to bgr for imagenet finetuning');
 -- cmd:option('-soumith_locnet',true);
 -- cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
@@ -574,7 +608,7 @@ cmd:option('-val_human_data_path','../data/test_minLoss_noIm_face.txt');
 cmd:option('learningRate', 1e-3)
 cmd:option('learningRateDecay',5e-6)
 cmd:option('multiplierBottom',1/10);
--- cmd:option('pivot',24);
+
 cmd:option('beta1', 0.9)
 cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
@@ -582,9 +616,10 @@ cmd:option('augmentation' , true);
 cmd:option('-gpu',1,'gpu to run the training on');
 
 params = cmd:parse(arg)
-train(params);
+-- train(params);
 
-cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
+-- cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
+-- cmd:option('-model','/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.001_5nn/final/model_all_final.dat');
 -- cmd:option('-val_horse_data_path','../data_227/test_minLoss_horse.txt');
 -- cmd:option('-val_human_data_path','../data_227/test_minLoss_noIm_face.txt');
 
@@ -595,7 +630,7 @@ cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
 
 -- -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr/final/model_all_final.dat');
 -- -- cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr','directory to save final and intermediate models etc');
--- -- cmd:option('-split_net',false);
+cmd:option('-split_net',false);
 
 -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/final/model_all_final.dat');
 -- cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/test_warp','directory to save final and intermediate models etc');
@@ -607,10 +642,10 @@ cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
 
 -- cmd:option('-bgr',true,'switch to bgr for imagenet finetuning');
 
--- -- cmd:option('-out_dir_images','/disk2/horse_cvpr/shrinking_warpNet/vanilla_cnn/full_model/150_50_1e-2/bef_train_warp_test');
+-- cmd:option('-out_dir_images','/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.001_5nn/warp_test');
 -- -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/tps_small_data_1e-3_dec_5_eye/matches_5_3531/final/model_all_final.dat');
--- -- cmd:option('-soumith_locnet',false);
--- -- cmd:option('-soumith_mean_file',false);
+-- cmd:option('-soumith_locnet',false);
+-- cmd:option('-soumith_mean_file',false);
 cmd:option('-iterations',2,'num of iterations to run');
 cmd:option('-batchSize',100,'batch size');
 

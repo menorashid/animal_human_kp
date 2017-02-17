@@ -516,7 +516,7 @@ cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
 
 cmd:option('-train_euclidean',false);
 params=cmd:parse(arg)
-train(params);
+-- train(params);
 
 
 

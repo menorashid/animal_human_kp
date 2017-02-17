@@ -265,6 +265,20 @@ do
 
 	end
 
+	function TPS_Helper:setUpGTNets()
+	    local tranet=nn.Transpose({2,3},{3,4})
+	    local gt_net=nn.Sequential();
+	    local parnet=nn.ParallelTable();
+	    
+	    parnet:add(tranet);
+	    parnet:add(nn.Identity());
+	    gt_net:add(parnet);
+	    gt_net:add(nn.BilinearSamplerBHWD());
+
+	    gt_net:add(nn.Transpose({3,4},{2,3}));
+
+	    return gt_net
+	end
 
 	function TPS_Helper:getAffineTransform(human_label,horse_label)
 	    -- local mat=torch.zeros(2,3):type(human_label:type());

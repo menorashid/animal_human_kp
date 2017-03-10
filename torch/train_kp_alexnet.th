@@ -311,7 +311,7 @@ cmd:text()
 
 
 params = cmd:parse(arg)
-main(params);
+-- main(params);
 
 -- cmd:option('-iterations',2,'num of iterations to run');
 -- cmd:option('-batchSize',100,'batch size');
@@ -331,7 +331,7 @@ python_exec_string[#python_exec_string+1]=100;
 python_exec_string[#python_exec_string+1]='-iterations';
 python_exec_string[#python_exec_string+1]=2;
 python_exec_string[#python_exec_string+1]='-val_data_path';
-python_exec_string[#python_exec_string+1]='../data_227/test_minloss_horse_old.txt';
+python_exec_string[#python_exec_string+1]='../data_227/test_minLoss_horse.txt';
 python_exec_string[#python_exec_string+1]='-model_path';
 python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'final/model_all_final.dat');
 python_exec_string[#python_exec_string+1]='-out_dir_images';

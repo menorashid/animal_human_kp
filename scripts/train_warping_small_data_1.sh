@@ -1,0 +1,3 @@
+th train_warping_net.th -outDir /home/SSD3/maheen-data/horse_project/tps_nets_bn_fix/horse_1000 -horse_data_path ../data/small_datasets/matches_5_1000_horse.txt -human_data_path ../data/small_datasets/matches_5_1000_face_noIm.txt
+th train_warping_net.th -outDir /home/SSD3/maheen-data/horse_project/tps_nets_bn_fix/horse_2000 -horse_data_path ../data/small_datasets/matches_5_2000_horse.txt -human_data_path ../data/small_datasets/matches_5_2000_face_noIm.txt
+th train_warping_net.th -outDir /home/SSD3/maheen-data/horse_project/tps_nets_bn_fix/horse_1500 -horse_data_path ../data/small_datasets/matches_5_1500_horse.txt -human_data_path ../data/small_datasets/matches_5_1500_face_noIm.txt

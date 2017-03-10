@@ -3,6 +3,35 @@ import os;
 import numpy as np;
 import visualize;
 from optparse import OptionParser
+import cv2;
+
+def saveImWithAnno(im_path,anno,out_path):
+    im=cv2.imread(im_path,1);
+    label=anno;
+    x=label[:,0];
+    y=label[:,1];
+    color=(0,0,255);
+    colors=[(0,255,0)]*len(x)
+
+    for label_idx in range(len(x)):
+        cv2.circle(im,(x[label_idx],y[label_idx]),6,colors[label_idx],-1);
+    print (im.shape)
+    cv2.imwrite(out_path,im);
+    
+def parseAnnoStr(annos):
+    annos=[int(num) for num in annos];
+    annos=np.array(annos);
+    annos=np.reshape(annos,(len(annos)/2,2));
+    return annos;
+
+def getDiffs(annos_gt,annos_pred):
+    diffs_all=[];
+    for anno_gt,anno_pred in zip(annos_gt,annos_pred):
+        diffs=np.power(anno_gt-anno_pred,2);
+        diffs=np.sum(diffs,1);
+        diffs=np.power(diffs,0.5);
+        diffs_all.append(diffs);
+    return diffs_all;
 
 
 def us_getDiffs(gt_pt_files,pred_pt_files):
@@ -58,9 +87,9 @@ def us_getErrorsAll(gt_file,out_dir_us,post_us,num_iter,batch_size):
 
 def getErrRates(err,thresh=0.1):
     err=np.array(err);
-    print type(err);
+    # print type(err);
     sum_errs=np.sum(err>thresh,0).astype(np.float);
-    print 'sum_errs',sum_errs;
+    # print 'sum_errs',sum_errs;
     total_errs=np.sum(err>=0,0);
     err_rate=sum_errs/total_errs*100.0;
     sum_errs_tot=np.sum(sum_errs);
@@ -70,7 +99,7 @@ def getErrRates(err,thresh=0.1):
 
 
 def plotComparisonKpError(errors_all,out_file,ticks,labels,xlabel=None,ylabel=None,colors=None,thresh=0.1,\
-                          title='',ylim=None):
+                          title='',ylim=None,loc=None):
     vals={};
     err_check=np.array(errors_all);
     err_rates_all=[];
@@ -81,9 +110,10 @@ def plotComparisonKpError(errors_all,out_file,ticks,labels,xlabel=None,ylabel=No
             err_rate.append(err_rate_tot);
         err_rates_all.append(err_rate);
     err_rates_all=np.array(err_rates_all);
+    err_rates_all[err_rates_all==0]=0.1
     for idx_label_curr,label_curr in enumerate(labels):
         vals[label_curr]=err_rates_all[idx_label_curr,:];
-    print vals;
+    # print vals;
 
     if colors is None:
         colors=['b','g'];
@@ -96,9 +126,45 @@ def plotComparisonKpError(errors_all,out_file,ticks,labels,xlabel=None,ylabel=No
  
         
     visualize.plotGroupBar(out_file,vals,ticks,labels,colors,xlabel=xlabel,ylabel=ylabel,\
-                           width=1.0/len(vals),title=title,ylim=ylim);
+                           width=1.0/len(vals),title=title,ylim=ylim,loc=loc);
     return err_rates_all
 
+def readGTFile(file_curr):
+    lines=util.readLinesFromFile(file_curr);
+    im_paths=[];
+    ims_size=[];
+    annos_all=[];
+    for line_curr in lines:
+        line_split=line_curr.rsplit(None,14);
+        im_paths.append(line_split[0]);
+        
+        im_size=line_split[1:1+4];
+        im_size=[int(num) for num in im_size];
+        im_size=[im_size[2]-im_size[0],im_size[3]-im_size[1]];
+        ims_size.append(im_size);
+        
+        annos=line_split[1+4:];
+        annos=parseAnnoStr(annos);
+        annos_all.append(annos);
+        
+    return im_paths,ims_size,annos_all;
+        
+def readPredFile(pred_file):
+    lines=util.readLinesFromFile(pred_file);
+    annos_all=[];
+    for line_curr in lines:
+        annos_str=line_curr.split();
+        annos=parseAnnoStr(annos_str);
+        annos_all.append(annos);
+    return annos_all;
+
+
+def them_getErrorsAll(gt_file,pred_file):
+    im_paths,im_sizes,annos_gt=readGTFile(gt_file);
+    annos_pred=readPredFile(pred_file);
+    diffs_all=getDiffs(annos_gt,annos_pred);
+    errors_all=getErrorPercentageImSize(im_sizes,diffs_all);
+    return errors_all;
 
 def saveHTML(out_us,us_test,batch_size=50,num_iter=2,justHTML=False):
     dir_server='./';

@@ -211,7 +211,7 @@ function test(params)
 
     td = data_animal_human(data_params);
     td.params.input_size = {size_out,size_out};
-    td.batch_size = params.batchSize;        
+    td.batch_size = params.batchSize_test;        
     
     local val_losses = {};
     local val_losses_iter = {};
@@ -220,7 +220,7 @@ function test(params)
     local pointSize=10;  
             
     
-    for i=1,params.iterations do
+    for i=1,params.iterations_test do
 
             local file_pre=paths.concat(out_dir_images,i..'_');
             
@@ -244,7 +244,7 @@ function test(params)
             local warped_im_gt;
             
             if params.affine then
-                local gt_params=getGTParams(human_labels,horse_labels);
+                local gt_params=affine_helper:getGTParams(human_labels,horse_labels);
                 warped_im_gt=gt_net:forward{batch_inputs:clone(),gt_params};
                 gt_output=gt_net:get(1):get(2).output;
             else
@@ -324,9 +324,9 @@ function test(params)
     python_exec_string[#python_exec_string+1]='--test_file';
     python_exec_string[#python_exec_string+1]=params.val_horse_data_path;
     python_exec_string[#python_exec_string+1]='--batchSize';
-    python_exec_string[#python_exec_string+1]=params.batchSize;
+    python_exec_string[#python_exec_string+1]=params.batchSize_test;
     python_exec_string[#python_exec_string+1]='--iterations';
-    python_exec_string[#python_exec_string+1]=params.iterations;
+    python_exec_string[#python_exec_string+1]=params.iterations_test;
     python_exec_string[#python_exec_string+1]='--justHTML';
     local py_str='';
     for str_num=1,#python_exec_string do
@@ -615,8 +615,12 @@ cmd:option('epsilon', 1e-8)
 cmd:option('augmentation' , true);
 cmd:option('-gpu',1,'gpu to run the training on');
 
+cmd:option('-iterations_test',2,'num of iterations to run');
+cmd:option('-batchSize_test',100,'batch size');
+cmd:option('-split_net',false);
+
 params = cmd:parse(arg)
--- train(params);
+train(params);
 
 -- cmd:option('-model',paths.concat(params.outDir,'final/model_all_final.dat'));
 -- cmd:option('-model','/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.001_5nn/final/model_all_final.dat');
@@ -630,7 +634,7 @@ params = cmd:parse(arg)
 
 -- -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr/final/model_all_final.dat');
 -- -- cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/tps_net_bgr','directory to save final and intermediate models etc');
-cmd:option('-split_net',false);
+
 
 -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/final/model_all_final.dat');
 -- cmd:option('-out_dir_images','/home/SSD3/maheen-data/horse_project/cvpr_rebuttal/full_model_bgr/test_warp','directory to save final and intermediate models etc');
@@ -646,8 +650,6 @@ cmd:option('-split_net',false);
 -- -- cmd:option('-model','/home/SSD3/maheen-data/horse_project/tps_small_data_1e-3_dec_5_eye/matches_5_3531/final/model_all_final.dat');
 -- cmd:option('-soumith_locnet',false);
 -- cmd:option('-soumith_mean_file',false);
-cmd:option('-iterations',2,'num of iterations to run');
-cmd:option('-batchSize',100,'batch size');
 
 params = cmd:parse(arg)
 test(params);

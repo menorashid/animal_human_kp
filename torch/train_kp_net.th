@@ -323,7 +323,7 @@ function main(params)
     for i=1,params.iterations do
 
         if params.decreaseAfter then
-            if i%params.decreaseAfter==0 and counter==0 then
+            if i%params.decreaseAfter==0 and counter<params.numDecrease then
                 counter=counter+1;
                 params.learningRate=params.learningRate/10;
                 optimState.learningRate=params.learningRate;
@@ -428,7 +428,7 @@ cmd:option('-std_im_path','/disk2/horse_cvpr/ft_kp_imagenet/meanstdCache.t7');
 cmd:option('-soumith',false);
 
 cmd:option('-limit',-1,'num of training data to read');
-cmd:option('-iterations',180*epoch_size,'num of iterations to run');
+cmd:option('-iterations',150*epoch_size,'num of iterations to run');
 cmd:option('-saveAfter',30*epoch_size,'num of iterations after which to save model');
 cmd:option('-batchSize',64,'batch size');
 cmd:option('-testAfter',30,'num iterations after which to get validation loss');
@@ -447,9 +447,10 @@ cmd:option('augmentation' , true);
 
 cmd:option('decreaseAfter',50*epoch_size);
 cmd:option('-gpu',1,'gpu to run the training on');
-cmd:text()
+
 
 cmd:option('-outDir','/disk2/horse_cvpr/ft_kp_imagenet');
+cmd:option('-numDecrease',2);
 params = cmd:parse(arg)
 main(params);
 
@@ -471,7 +472,7 @@ python_exec_string[#python_exec_string+1]=100;
 python_exec_string[#python_exec_string+1]='-iterations';
 python_exec_string[#python_exec_string+1]=2;
 python_exec_string[#python_exec_string+1]='-val_data_path';
-python_exec_string[#python_exec_string+1]='../data/test_minloss_horse_old.txt';
+python_exec_string[#python_exec_string+1]=params.val_data_path;
 python_exec_string[#python_exec_string+1]='-model_path';
 python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'final/model_all_final.dat');
 python_exec_string[#python_exec_string+1]='-out_dir_images';

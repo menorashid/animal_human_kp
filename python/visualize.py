@@ -3,7 +3,7 @@ import numpy as np;
 matplotlib.use('Agg')
 # matplotlib.use('PS') 
 import matplotlib.pyplot as plt;
-matplotlib.rcParams.update({'font.size': 22})
+matplotlib.rcParams.update({'font.size': 16})
 from matplotlib.backends.backend_pdf import PdfPages
 import os;
 from PIL import Image,ImageDraw,ImageFont;
@@ -180,7 +180,7 @@ def plotErrorBars(dict_to_plot,x_lim,y_lim,xlabel,y_label,title,out_file,margin=
     plt.savefig(out_file);
     plt.close();
 
-def plotSimple(xAndYs,out_file,title='',xlabel='',ylabel='',legend_entries=None,loc=0,outside=False,logscale=False):
+def plotSimple(xAndYs,out_file,title='',xlabel='',ylabel='',legend_entries=None,loc=0,outside=False,logscale=False,colors=None,xticks=None):
     plt.title(title);
     plt.grid(1);
     plt.xlabel(xlabel);
@@ -189,18 +189,29 @@ def plotSimple(xAndYs,out_file,title='',xlabel='',ylabel='',legend_entries=None,
         plt.gca().set_xscale('log')
     # assert len(xs)==len(ys)
     handles=[];
-    for x,y in xAndYs:
-        handle,=plt.plot(x,y,linewidth=5.0);
+    for idx_x_y,(x,y) in enumerate(xAndYs):
+        if colors is not None:
+            color_curr=colors[idx_x_y];
+            handle,=plt.plot(x,y,color_curr,linewidth=5.0);
+        else:
+            handle,=plt.plot(x,y,linewidth=5.0);
+
         handles.append(handle);
     if legend_entries is not None:
         if outside:
             lgd=plt.legend(handles,legend_entries,loc=loc,bbox_to_anchor=(1.05, 1),borderaxespad=0.)
         else:
             lgd=plt.legend(handles,legend_entries,loc=loc)    
+
+    if xticks is not None:
+        ax = plt.gca()
+        ax.set_xticks(xticks)
+
     if legend_entries is not None:
         plt.savefig(out_file,bbox_extra_artists=(lgd,), bbox_inches='tight')
     else:
         plt.savefig(out_file);
+
     plt.close();    
 
 def writeHTMLForFolder(path_to_im,ext='jpg',height=300,width=300):
@@ -213,6 +224,7 @@ def writeHTMLForFolder(path_to_im,ext='jpg',height=300,width=300):
 
 
 def plotGroupBar(out_file,dict_vals,xtick_labels,legend_vals,colors,xlabel='',ylabel='',title='',width=0.25,ylim=None,loc=None):
+    # print 'loc',loc
     if loc is None:
         loc=2;
     # Setting the positions and width for the bars
@@ -243,7 +255,7 @@ def plotGroupBar(out_file,dict_vals,xtick_labels,legend_vals,colors,xlabel='',yl
 
     for pos_idx,legend_val in enumerate(legend_vals):
         # print legend_val,[p + width*pos_idx for p in pos],dict_vals[legend_val]
-        print [p + width*pos_idx for p in pos],dict_vals[legend_val],width,colors[pos_idx],legend_val
+        # print [p + width*pos_idx for p in pos],dict_vals[legend_val],width,colors[pos_idx],legend_val
         plt.bar([p + width*pos_idx for p in pos],dict_vals[legend_val],width,color=colors[pos_idx],label=legend_val)
 
     ax = plt.gca()
@@ -252,7 +264,10 @@ def plotGroupBar(out_file,dict_vals,xtick_labels,legend_vals,colors,xlabel='',yl
     # print 'xticks' ,[p + len(legend_vals)/2.0 * width for p in pos]
     ax.set_xticklabels(xtick_labels,rotation=0)
     # ax.legend( legend_vals,loc=loc)
-    plt.legend(legend_vals,bbox_to_anchor=(0., 0, 1., 1), ncol=2);
+    if loc>5:
+        plt.legend(legend_vals,bbox_to_anchor=(0., 0, 1., 1), ncol=2);
+    else:
+        ax.legend( legend_vals,loc=loc)
         # , mode="expand", borderaxespad=0.)
 # Setting the x-axis and y-axis limits
     # plt.xlim(xlim[0],xlim[1])

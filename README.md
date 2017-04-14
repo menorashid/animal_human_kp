@@ -1,12 +1,13 @@
-##Paper
+## Paper
+This repository provides code for:
 
 [Interspecies Knowledge Transfer for Facial Keypoint Detection.](https://arxiv.org/abs/1704.04023) Maheen Rashid, Xiuye Gu, Yong Jae Lee. CVPR 2017.
 
-Contact: Maheen Rashid (mhnrashid@ucdavis.edu)
+This version of the code is for an older version of the paper. Updated code will be made available very soon.
 
-This version of the code is for an older version of the paper. Updated code will be made available soon.
+If you have any question you can contact Maheen Rashid (mhnrashid at ucdavis dot edu)
 
-##Getting Started
+## Getting Started
 
 Download the code from GitHub:
 ```bash
@@ -40,7 +41,7 @@ luarocks make
 ```
 It is a modification of the code from [Spatial Transformer Network (Jaderberg et al.)](https://github.com/qassemoquab/stnbhwd) and includes a Thin Plate Spline grid generator layer.
 
-##Dataset
+## Dataset
 Download the [Horse Dataset](https://www.dropbox.com/s/9t770jhcjqo3mmg/release_data.zip) (580 MB)
 
 Run the following commands
@@ -49,7 +50,7 @@ cd data
 unzip <path to data zip file>
 ```
 
-##Models
+## Models
 To download all the pretrained and untrained models go [here](https://www.dropbox.com/s/4r2ghpwoncq656t/release_models.zip) (8.6 GB)
 
 Run the following commands
@@ -66,7 +67,7 @@ Otherwise add the individual models to *models/*
 * [Untrained TPS Warping model](https://www.dropbox.com/s/19twyz9865zrz2a/tps_localization_net_untrained.dat)(111 MB)
 * [Untrained Affine Warping model](https://www.dropbox.com/s/byxphqqmzrkstpa/affine_localization_net_untrained.dat)(121 MB)
 
-##Testing
+## Testing
 To test pretrained model run the following commands
 ```bash
 cd torch
@@ -80,7 +81,7 @@ A webpage with the results would be in the results directory.
 <path to results directory>/results.html
 ```
 
-##Training
+## Training
 The file for training the full model is 
 ```
 torch/train_full_model.th

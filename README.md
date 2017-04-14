@@ -1,4 +1,10 @@
+###Paper
+[Interspecies Knowledge Transfer for Facial Keypoint Detection.](https://arxiv.org/abs/1704.04023) Maheen Rashid, Xiuye Gu, Yong Jae Lee. CVPR 2017.
+
 Contact: Maheen Rashid (mhnrashid@ucdavis.edu)
+
+This version of the code is for an older version of the paper. Updated code will be made available soon.
+
 ##Getting Started
 
 Download the code from GitHub:

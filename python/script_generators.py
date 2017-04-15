@@ -294,15 +294,18 @@ def script_bl_tps_lr_search(vision1=False):
 
     # num_data=range(500,3500,500)+[3531];
     # num_data=[3531,500,3000,1000,2500,1500,2000]
-    num_data=[3531]
+    num_data=[3000]
     file_data_pre='../data/small_datasets/matches_5_';
-    if vision1:
-        out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
-    else:
-        out_dir_pre_pre='/disk2/horse_cvpr'
-    out_dir_pre=os.path.join(out_dir_pre_pre,'bl_tps_lr_search_stage2')
+    # if vision1:
+    #     out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
+    # else:
+    #     out_dir_pre_pre='/disk2/horse_cvpr'
+
+    out_dir_pre_pre='../experiments';
+
+    out_dir_pre=os.path.join(out_dir_pre_pre,'bl_tps_lr_0.01_0.1_0.01')
     torch_file='train_full_model.th';
-    out_file_script='../scripts/bl_tps_search';
+    out_file_script='../scripts/bl_tps_last_try';
     tps_model_path='../models/tps_localization_net_untrained_withTPS.dat'
     num_scripts=2;
     commands=[];
@@ -317,14 +320,17 @@ def script_bl_tps_lr_search(vision1=False):
     #     print comb;
     # print len(combs);
 
-    combs=[(0.01,0.1,0.01),\
-            (0.01,0.01,0.001),\
-            (0.001,0.1,0.01)];
+    combs=[(0.01,0.1,0.01)]
+    # combs=[(0.0001,1,0.01)]
+    # ,\
+    #         (0.01,0.01,0.001),\
+    #         (0.001,0.1,0.01)];
 
     out_dirs=[];
     for num_data_curr in num_data:
         for lr,mm,mb in combs:
-            out_dir_curr=os.path.join(out_dir_pre,'_'.join([str(num) for num in [lr,mm,mb]]))
+            out_dir_curr=os.path.join(out_dir_pre,'horse_'+str(num_data_curr))
+            # os.path.join(out_dir_pre,'_'.join([str(num) for num in [lr,mm,mb]]))
             command_curr=['th',torch_file];
             command_curr.extend(['learningRate',lr]);
             command_curr.extend(['multiplierMid',mm]);
@@ -363,11 +369,63 @@ def script_bl_tps_lr_search(vision1=False):
         # print commands;
         util.writeFile(out_file_script_curr,commands);
 
+def script_bl_tps_smooth(vision1=False):
+    # num_data=range(500,3500,500)+[3531];
+    num_data=[3531]
+    # ,500,3000,1000,2500,1500,2000]
+    file_data_pre='../data/small_datasets/matches_5_';
+    if vision1:
+        out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
+    else:
+        out_dir_pre_pre='/disk2/horse_cvpr'
+    out_dir_pre=os.path.join(out_dir_pre_pre,'bl_tps_lr_0.01_0.1_0.01/horse_')
+    torch_file='train_full_model.th';
+    out_file_script='../scripts/bl_tps_smooth';
+    tps_model_path='../models/tps_localization_net_untrained_withTPS.dat'
+    num_scripts=2;
+    commands=[];
+    epoch_size=56;
+    num_runs =4;
+    for run_num in range(num_runs):
+        for num_data_curr in num_data:
+            command_curr=['th',torch_file];
+            out_dir_in=out_dir_pre+str(num_data_curr);
+            out_dir_out=os.path.join(out_dir_in,'resume_180_'+str(run_num));
+            command_curr.extend(['learningRate',str(1e-3)]);
+            command_curr.extend(['multiplierMid',str(0.1)]);
+            command_curr.extend(['multiplierBottom',str(0.01)]);
+            
+            command_curr.extend(['-iterations',str(20*epoch_size)]);
+            command_curr.extend(['-decreaseAfter',str(60*epoch_size)]);
+
+            command_curr.extend(['-horse_data_path',file_data_pre+str(num_data_curr)+'_horse_minloss.txt']);
+            command_curr.extend(['-human_data_path',file_data_pre+str(num_data_curr)+'_face_noIm_minloss.txt']);
+            command_curr.extend(['-numDecrease',str(1)]);
+            command_curr.extend(['-tps_model_path',tps_model_path]);
+
+            command_curr.extend(['-outDir',out_dir_out]);
+
+            command_curr.extend(['-bgr']);
+
+            command_curr.extend(['-full_model_flag']);
+            command_curr.extend(['-face_detection_model_path',os.path.join(out_dir_in,'intermediate','model_all_10080.dat')]);
+            command_curr=' '.join(command_curr);
+            commands.append(command_curr);
+
+    commands=np.array(commands);
+    commands_split=np.array_split(commands,num_scripts);
+    for idx_commands,commands in enumerate(commands_split):
+        out_file_script_curr=out_file_script+'_'+str(idx_commands)+'.sh';
+        print idx_commands
+        print out_file_script_curr
+        print commands;
+        util.writeFile(out_file_script_curr,commands);
 
     
 def script_bl_tps_resume(vision1=False):
     # num_data=range(500,3500,500)+[3531];
-    num_data=[3531,500,3000,1000,2500,1500,2000]
+    num_data=[3531]
+    # ,500,3000,1000,2500,1500,2000]
     file_data_pre='../data/small_datasets/matches_5_';
     if vision1:
         out_dir_pre_pre='/home/SSD3/maheen-data/horse_project'
@@ -384,7 +442,7 @@ def script_bl_tps_resume(vision1=False):
     for num_data_curr in num_data:
         command_curr=['th',torch_file];
         out_dir_in=out_dir_pre+str(num_data_curr);
-        out_dir_out=os.path.join(out_dir_in,'resume_60');
+        out_dir_out=os.path.join(out_dir_in,'resume_60_again');
         if num_data_curr<=2000:
             command_curr.extend(['learningRate',str(1e-5)]);
         else:
@@ -898,7 +956,10 @@ def makeAblationGraph():
     num_data=range(500,3500,500)+[3531];
     bl_ft_dir=[os.path.join(dir_meta,'face_baselines_small_data_rerun_50_dec/matches_5_'),'_horse_minloss/resume_50/test_images'];
     bl_alexnet_dir=[os.path.join(dir_meta,'cvpr_rebuttal','imagenet_last_scratch_small_data/small_train_minloss_'),'/resume_50/test_images'];
-    bl_tps_dir=[os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_'),'/test_images'];
+    # bl_tps_dir=[os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_'),'/test_images'];
+
+    bl_tps_dir=[os.path.join(dir_meta,'bl_tps_lr_0.01_0.1_0.01/horse_'),'/test_images'];
+
     bl_affine_dir=[os.path.join(dir_meta,'bl_affine_small_data_0.001_0.1_0.01/horse_'),'/test_images'];
 
     us_affine_dir=[os.path.join(dir_meta,'full_nets_us_affine_small_data/horse_'),'/test_images'];
@@ -944,7 +1005,9 @@ def makeAblationGraph():
 
     xAndYs=[(num_data,vals_curr) for vals_curr in failures_all];
     for val_curr in failures_all:
-        print val_curr[0];
+        print np.mean(np.array(val_curr)-np.array(failures_all[0]));
+        print np.max(np.array(val_curr)-np.array(failures_all[0]));
+        print val_curr;
     # print xAndYs
     xlabel='Training Data Size';
     ylabel='Failure %';
@@ -960,7 +1023,7 @@ def makeComparisonBarGraphs():
     util.mkdir(out_dir);
     out_dir=os.path.join(out_dir,'bar_graphs');
     util.mkdir(out_dir);
-    for i in range(8):
+    for i in range(3,5):
     # i=6;
 
         if i==0:
@@ -990,7 +1053,9 @@ def makeComparisonBarGraphs():
             bl_alexnet_dir=os.path.join(dir_meta,'cvpr_rebuttal','imagenet_last_scratch_small_data/small_train_minloss_3531/resume_50/test_images');
             # bl_tps_dir=os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix/horse_3531/resume_60/test_images');
             us_affine_dir=os.path.join(dir_meta,'full_nets_us_affine_small_data/horse_3531/test_images');
-            bl_tps_dir=os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_3531/test_images');
+            # bl_tps_dir=os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_3531/test_images');
+            bl_tps_dir=os.path.join(dir_meta,'bl_tps_lr_0.01_0.1_0.01/horse_3531/resume_180_3/test_images');
+
             us_tps_dir=os.path.join(dir_meta,'full_nets_us_no_bn_fix/horse_3531/test_images');
             us_scratch_dir=os.path.join(dir_meta,'scratch_rebuttal','resume_150','test_images');
             bl_random=os.path.join(dir_meta,'train_random_neighbors_iccv','full_model','test_images');
@@ -1110,13 +1175,14 @@ def makeComparativeHTML():
     out_dir=os.path.join(dir_meta,'iccv_img');
     out_dir_meta=os.path.join(out_dir,'comparative_htmls');
     util.mkdir(out_dir_meta);
-    # compare_whats=[['us_tps_horse','bl_tps_horse'],['us_tps_horse','bl_ft_horse'],['us_tif_tps_sheep','tif_sheep']]
-    compare_whats=[['us_tps_horse','bl_ft_horse']]
+    compare_whats=[['us_tps_horse','bl_tps_horse'],['us_tps_horse','bl_ft_horse'],['us_tif_tps_sheep','tif_sheep']]
+    # compare_whats=[['us_tps_horse','bl_ft_horse']]
 
     bl_ft_dir=os.path.join(dir_meta,'face_baselines_small_data_rerun_50_dec/matches_5_3531_horse_minloss/resume_50/test_images');
     bl_alexnet_dir=os.path.join(dir_meta,'cvpr_rebuttal','imagenet_last_scratch_small_data/small_train_minloss_3531/resume_50/test_images');
     us_affine_dir=os.path.join(dir_meta,'full_nets_us_affine_small_data/horse_3531/test_images');
-    bl_tps_dir=os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_3531/test_images');
+    # bl_tps_dir=os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_3531/test_images');
+    bl_tps_dir=os.path.join(dir_meta,'bl_tps_lr_0.01_0.1_0.01/horse_3531/resume_180_3/test_images');
     us_tps_dir=os.path.join(dir_meta,'full_nets_us_no_bn_fix/horse_3531/test_images');
     us_scratch_dir=os.path.join(dir_meta,'scratch_rebuttal','resume_150','test_images');
     bl_ft_dir_sheep=os.path.join(dir_meta,'all_sheep_models/sheep/bl_ft/test_images');
@@ -1199,8 +1265,8 @@ def makeComparativeHTML():
             avgs.append(avg);
             
             
-        # biggest_diff=avgs[1]-avgs[0];
-        biggest_diff=avgs[0];
+        biggest_diff=avgs[1]-avgs[0];
+        # biggest_diff=avgs[1];
         idx_sort=np.argsort(biggest_diff)[::-1];
         ims=[];
         captions=[];
@@ -1231,93 +1297,98 @@ def makeThreshCurves():
     out_dir=os.path.join(out_dir,'thresh_curves');
     util.mkdir(out_dir);
     # to_include=['bl_ft','bl_alexnet','bl_tps','ours_affine','ours'];outside=True;
-    # to_include=['ours','bl_tps','bl_ft','scratch'];post='horse';data_type='Horse';
+    to_include=['ours','bl_tps','bl_ft','scratch'];post='horse';data_type='Horse';
     # to_include=['ours','bl_tps','bl_ft','scratch'];post='sheep';data_type='Sheep'
     # to_include=['ours','tif'];post='horse_tif';data_type='Horse';
     # to_include=['ours','tif'];post='sheep_tif';data_type='Sheep';
-    to_include=['ours','ours_random'];post='horse';data_type='Horse';
+    to_include_all=[(['ours','bl_tps','bl_ft','scratch'],'horse','Horse'),(['ours','bl_tps','bl_ft','scratch'],'sheep','Sheep'),(['ours','tif'],'horse_tif','Horse'),(['ours','tif'],'sheep_tif','Sheep')];
+
+    for to_include,post,data_type in to_include_all:
+    # to_include=['ours','ours_random'];post='horse';data_type='Horse';
 
     
-    out_file_pre=os.path.join(out_dir,'_'.join(to_include)+'_'+post+'_');
-        # +'.pdf');
-    if post=='horse':
-        num_data_curr=3531;
-        bl_ft_dir=os.path.join(dir_meta,'face_baselines_small_data_rerun_50_dec/matches_5_3531_horse_minloss/resume_50/test_images');
-        bl_alexnet_dir=os.path.join(dir_meta,'cvpr_rebuttal','imagenet_last_scratch_small_data/small_train_minloss_3531/resume_50/test_images');
-        bl_tps_dir=os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_3531/test_images');
-        us_affine_dir=os.path.join(dir_meta,'full_nets_us_affine_small_data/horse_3531/test_images');
-        us_scratch_dir=os.path.join(dir_meta,'scratch_rebuttal','resume_150','test_images');
-        us_tps_dir=os.path.join(dir_meta,'full_nets_us_no_bn_fix/horse_3531/test_images');
-        bl_random=os.path.join(dir_meta,'train_random_neighbors_iccv','full_model','test_images');
-        test_dirs_dict={'bl_ft':(bl_ft_dir,'g'),'bl_alexnet':(bl_alexnet_dir,'y'),'bl_tps':(bl_tps_dir,'r'),'ours_affine':(us_affine_dir,'c'),'ours':(us_tps_dir,'b'),'scratch':(us_scratch_dir,'k'),\
-        'ours_random':(bl_random,'g')};
-        test_file='../data/test_minLoss_horse.txt';
-        num_iter=2;
-        batch_size=100;
-    elif post=='sheep':
-        bl_ft_dir=os.path.join(dir_meta,'all_sheep_models/sheep/bl_ft/test_images');
-        bl_tps_dir=os.path.join(dir_meta,'all_sheep_models/sheep/bl_tps/test_images');
-        us_tps_dir=os.path.join(dir_meta,'all_sheep_models/sheep/full_model/test_images');
-        us_scratch_dir=os.path.join(dir_meta,'all_sheep_models/sheep/bl_scratch/resume_150/test_images');
-        test_dirs_dict={'bl_ft':(bl_ft_dir,'g'),'bl_tps':(bl_tps_dir,'r'),'ours':(us_tps_dir,'b'),'scratch':(us_scratch_dir,'k')};
-        test_file=os.path.join(dir_meta,'data_check/sheep/matches_5_sheep_test_allKP_minloss.txt');
-        num_iter=2;
-        batch_size=50; 
-    elif post=='horse_tif':   
-        tif_dir=[os.path.join(dir_meta,'files_for_sheepCode','horse_test_new.txt'),\
-        os.path.join(dir_meta,'files_for_sheepCode','horse_test_new_TIF_result.txt')];
-        us_tps_dir=os.path.join(dir_meta,'tif_bl_us/horse/full_model/test_images');
-        test_dirs_dict={'tif':(tif_dir,'g'),'ours':(us_tps_dir,'b')};
-        test_file=os.path.join(dir_meta,'files_for_sheepCode/horse_test_us_horse_minloss.txt');
-        num_iter=2;
-        batch_size=50; 
-    elif post=='sheep_tif':   
-        tif_dir=[os.path.join(dir_meta,'files_for_sheepCode','sheep_test_new.txt'),\
-        os.path.join(dir_meta,'files_for_sheepCode','sheep_test_new_TIF_result.txt')];
-        us_tps_dir=os.path.join(dir_meta,'tif_bl_us/sheep/full_model/test_images');
-        test_dirs_dict={'tif':(tif_dir,'g'),'ours':(us_tps_dir,'b')};
-        test_file=os.path.join(dir_meta,'files_for_sheepCode/sheep_test_us_sheep_minloss.txt');
-        num_iter=2;
-        batch_size=50;
+        out_file_pre=os.path.join(out_dir,'_'.join(to_include)+'_'+post+'_');
+            # +'.pdf');
+        if post=='horse':
+            num_data_curr=3531;
+            bl_ft_dir=os.path.join(dir_meta,'face_baselines_small_data_rerun_50_dec/matches_5_3531_horse_minloss/resume_50/test_images');
+            bl_alexnet_dir=os.path.join(dir_meta,'cvpr_rebuttal','imagenet_last_scratch_small_data/small_train_minloss_3531/resume_50/test_images');
+            # bl_tps_dir=os.path.join(dir_meta,'bl_tps_small_data_no_bn_fix_0.001_0.1_0.01/horse_3531/test_images');
+            bl_tps_dir=os.path.join(dir_meta,'bl_tps_lr_0.01_0.1_0.01/horse_3531/resume_180_3/test_images');
+
+            us_affine_dir=os.path.join(dir_meta,'full_nets_us_affine_small_data/horse_3531/test_images');
+            us_scratch_dir=os.path.join(dir_meta,'scratch_rebuttal','resume_150','test_images');
+            us_tps_dir=os.path.join(dir_meta,'full_nets_us_no_bn_fix/horse_3531/test_images');
+            bl_random=os.path.join(dir_meta,'train_random_neighbors_iccv','full_model','test_images');
+            test_dirs_dict={'bl_ft':(bl_ft_dir,'g'),'bl_alexnet':(bl_alexnet_dir,'y'),'bl_tps':(bl_tps_dir,'r'),'ours_affine':(us_affine_dir,'c'),'ours':(us_tps_dir,'b'),'scratch':(us_scratch_dir,'k'),\
+            'ours_random':(bl_random,'g')};
+            test_file='../data/test_minLoss_horse.txt';
+            num_iter=2;
+            batch_size=100;
+        elif post=='sheep':
+            bl_ft_dir=os.path.join(dir_meta,'all_sheep_models/sheep/bl_ft/test_images');
+            bl_tps_dir=os.path.join(dir_meta,'all_sheep_models/sheep/bl_tps/test_images');
+            us_tps_dir=os.path.join(dir_meta,'all_sheep_models/sheep/full_model/test_images');
+            us_scratch_dir=os.path.join(dir_meta,'all_sheep_models/sheep/bl_scratch/resume_150/test_images');
+            test_dirs_dict={'bl_ft':(bl_ft_dir,'g'),'bl_tps':(bl_tps_dir,'r'),'ours':(us_tps_dir,'b'),'scratch':(us_scratch_dir,'k')};
+            test_file=os.path.join(dir_meta,'data_check/sheep/matches_5_sheep_test_allKP_minloss.txt');
+            num_iter=2;
+            batch_size=50; 
+        elif post=='horse_tif':   
+            tif_dir=[os.path.join(dir_meta,'files_for_sheepCode','horse_test_new.txt'),\
+            os.path.join(dir_meta,'files_for_sheepCode','horse_test_new_TIF_result.txt')];
+            us_tps_dir=os.path.join(dir_meta,'tif_bl_us/horse/full_model/test_images');
+            test_dirs_dict={'tif':(tif_dir,'g'),'ours':(us_tps_dir,'b')};
+            test_file=os.path.join(dir_meta,'files_for_sheepCode/horse_test_us_horse_minloss.txt');
+            num_iter=2;
+            batch_size=50; 
+        elif post=='sheep_tif':   
+            tif_dir=[os.path.join(dir_meta,'files_for_sheepCode','sheep_test_new.txt'),\
+            os.path.join(dir_meta,'files_for_sheepCode','sheep_test_new_TIF_result.txt')];
+            us_tps_dir=os.path.join(dir_meta,'tif_bl_us/sheep/full_model/test_images');
+            test_dirs_dict={'tif':(tif_dir,'g'),'ours':(us_tps_dir,'b')};
+            test_file=os.path.join(dir_meta,'files_for_sheepCode/sheep_test_us_sheep_minloss.txt');
+            num_iter=2;
+            batch_size=50;
 
 
-    threshes=range(0,26);
-    threshes=[float(thresh_curr)/100.0 for thresh_curr in threshes];
-    post_us=['_gt_pts.npy','_pred_pts.npy']
-    ticks=['LE','RE','N','LM','RM','ALL'];
+        threshes=range(0,26);
+        threshes=[float(thresh_curr)/100.0 for thresh_curr in threshes];
+        post_us=['_gt_pts.npy','_pred_pts.npy']
+        ticks=['LE','RE','N','LM','RM','ALL'];
 
-    errors_all=[];
-    curves=[];
-    labels=[];
-    colors=[];
-    # for out_dir_test in dir_results:
-    for key_curr in to_include:
-        test_dir_curr,color=test_dirs_dict[key_curr];
-        if key_curr=='tif':
-            errors_curr=viz.them_getErrorsAll(test_dir_curr[0],test_dir_curr[1]);
-        else:
-            errors_curr=viz.us_getErrorsAll(test_file,test_dir_curr,post_us,num_iter,batch_size);
+        errors_all=[];
+        curves=[];
+        labels=[];
+        colors=[];
+        # for out_dir_test in dir_results:
+        for key_curr in to_include:
+            test_dir_curr,color=test_dirs_dict[key_curr];
+            if key_curr=='tif':
+                errors_curr=viz.them_getErrorsAll(test_dir_curr[0],test_dir_curr[1]);
+            else:
+                errors_curr=viz.us_getErrorsAll(test_file,test_dir_curr,post_us,num_iter,batch_size);
 
-        curve_curr=[[],[],[],[],[],[]];
-        for thresh_curr in threshes:
-            failures,failures_kp=viz.getErrRates(errors_curr,thresh_curr)
-            for failure_idx,failure_curr in enumerate([f_curr for f_curr in failures]+[failures_kp]):
-                curve_curr[failure_idx].append(failure_curr);
-        curves.append(curve_curr);
-        colors.append(color);
-        labels.append(key_curr.replace('_',' ').upper());
+            curve_curr=[[],[],[],[],[],[]];
+            for thresh_curr in threshes:
+                failures,failures_kp=viz.getErrRates(errors_curr,thresh_curr)
+                for failure_idx,failure_curr in enumerate([f_curr for f_curr in failures]+[failures_kp]):
+                    curve_curr[failure_idx].append(failure_curr);
+            curves.append(curve_curr);
+            colors.append(color);
+            labels.append(key_curr.replace('_',' ').upper());
 
 
-    threshes_p=[thresh*100 for thresh in threshes]
-    for curve_idx in range(6):
-        out_file=out_file_pre+ticks[curve_idx]+'.pdf';
-        xAndYs=[(threshes_p,curve_curr[curve_idx]) for curve_curr in curves];
+        threshes_p=[thresh*100 for thresh in threshes]
+        for curve_idx in range(6):
+            out_file=out_file_pre+ticks[curve_idx]+'.pdf';
+            xAndYs=[(threshes_p,curve_curr[curve_idx]) for curve_curr in curves];
 
-        xlabel='Error Threshold %';
-        ylabel='Failure Rate %'
+            xlabel='Error Threshold %';
+            ylabel='Failure Rate %'
 
-        visualize.plotSimple(xAndYs,out_file,xlabel=xlabel,ylabel=ylabel,legend_entries=labels,title=data_type+' '+ticks[curve_idx],colors=colors);
-        print out_file.replace(dir_server,click_str);
+            visualize.plotSimple(xAndYs,out_file,xlabel=xlabel,ylabel=ylabel,legend_entries=labels,title=data_type+' '+ticks[curve_idx],colors=colors);
+            print out_file.replace(dir_server,click_str);
 
 def rerun_scratch(system):
     if system=='vision4':
@@ -1576,6 +1647,10 @@ def makeNeighborsGraph(system):
     print out_file.replace(dir_server,click_str);
 
 def main():
+    # script_bl_tps_smooth(True)
+    # script_bl_tps_lr_search()
+    # script_bl_tps_lr_search()
+    # script_bl_tps_resume(True)
     # makeComparisonBarGraphs()
     # makeNeighborsGraph('vision1');
     # script_bl_tps(True)
@@ -1590,9 +1665,9 @@ def main():
     # run_random_neighbors(True)
     # script_bl_tps_lr_search(vision1=False)
     # rerun_scratch('vision1');
-    makeThreshCurves();
+    # makeThreshCurves();
 
-    # makeAblationGraph()    
+    makeAblationGraph()    
     # makeComparisonBarGraphs()
 
     # script_bl_tps_resume(vision1=True)

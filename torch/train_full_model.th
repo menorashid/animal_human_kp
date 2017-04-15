@@ -1,7 +1,7 @@
 require 'image'
 npy4th = require 'npy4th'
 require 'data_animal';
-require 'data_animal_human';
+require 'data_animal_human_opt';
 require 'cunn'
 require 'cudnn'
 require 'nn';
@@ -81,7 +81,9 @@ end
 
 function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTotal,params_dual,affine_flag,mean_im,std_im,train_euclidean,saveImage)
     
+    local t=os.clock();
     td:getTrainingData();
+    print (os.clock()-t);
     td.training_set_horse.data=td.training_set_horse.data:cuda();
     td.training_set_human.label=td.training_set_human.label:cuda();
     td.training_set_horse.label=td.training_set_horse.label:cuda();
@@ -271,7 +273,8 @@ function train(params)
                     limit=params.limit,
                     input_size={224,224},
                     humanImage=false,
-                    bgr=params.bgr};
+                    bgr=params.bgr,
+                    optimize=params.optimize};
         
         td=data_animal_human(data_params);
         
@@ -295,7 +298,8 @@ function train(params)
                             limit=params.limit,
                             input_size={224,224},
                             humanImage=false,
-                            bgr=params.bgr};
+                            bgr=params.bgr,
+                            optimize=params.optimize};
                             
         td=data_animal_human(data_params);
         
@@ -342,8 +346,10 @@ function train(params)
             end
         end
         -- local saveImage=paths.concat(out_dir_debug,i..'_');
+        local time_iter=os.clock();
         local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,                
             optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im,params.train_euclidean,false)
+        time_iter=os.clock()-time_iter;
         
         if not loss_mid then
             loss_mid=train_loss;
@@ -354,7 +360,7 @@ function train(params)
         losses_iter[#losses_iter +1] = i;
 
         if i%params.dispAfter==0 then
-            local disp_str=string.format("lr: %6s, minibatches processed: %6s, loss = %6.6f, midloss = %6.6f", optimState.learningRate,i, losses[#losses],losses_mid[#losses_mid])
+            local disp_str=string.format("lr: %6s, minibatches processed: %6s, loss = %6.6f, midloss = %6.6f, time = %6.6f", optimState.learningRate,i, losses[#losses],losses_mid[#losses_mid],time_iter)
             logger:writeString(dump.tostring(disp_str)..'\n');
             print (disp_str);
 
@@ -515,8 +521,9 @@ cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
 -- cmd:option('-pivot_u',26);
 
 cmd:option('-train_euclidean',false);
+cmd:option('-optimize',false);
 params=cmd:parse(arg)
--- train(params);
+train(params);
 
 
 

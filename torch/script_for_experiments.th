@@ -167,9 +167,9 @@ function vision3_meta()
 end
 
 
-function shrinkModelFiles(dir_meta)
-	for dir_exp in paths.iterdirs(dir_meta) do
-		local dir_curr=paths.concat(dir_meta,dir_exp);
+function shrinkModelFiles(dir_curr)
+	-- for dir_exp in paths.iterdirs(dir_meta) do
+	-- 	local dir_curr=paths.concat(dir_meta,dir_exp);
 		for dir_small_data in paths.iterdirs(dir_curr) do
 			local dir_small_data=paths.concat(dir_curr,dir_small_data);
 
@@ -179,7 +179,6 @@ function shrinkModelFiles(dir_meta)
 				for file_curr in paths.iterfiles(dir_small_data) do
 					-- print (file_curr,paths.extname(file_curr));
 					if paths.extname(file_curr)=='dat' then
-
 						local model_file =paths.concat(dir_small_data,file_curr)
 						print (model_file);
 						local net=torch.load(model_file);
@@ -188,16 +187,36 @@ function shrinkModelFiles(dir_meta)
 					end
 				end
 		end
+	-- end
+end
+
+function shrinkModelFiles_txt(text_file)
+	file_lines={};
+	
+	for line in io.lines(text_file) do 
+	    file_lines[#file_lines+1]=line;
+	end 
+
+	for line_idx=1,#file_lines do
+		local model_file = file_lines[line_idx];
+		local time=os.clock();
+		local net=torch.load(model_file);
+		net:clearState();
+		torch.save(model_file,net);	
+		print (line_idx,#file_lines,model_file,os.clock()-time)
 	end
 end
 
 function main()
-	local dir_data='/home/SSD3/maheen-data/horse_project'
+	local text_file='to_compress.txt';
+	shrinkModelFiles_txt(text_file);
+	-- local dir_data='/home/SSD3/maheen-data/horse_project'
+	-- local dir_data='/disk2/horse_cvpr'
 	-- local dir_meta=paths.concat(dir_data,'full_system_small_data_eye_1e-2_10_100');
 	-- local dir_meta=paths.concat(dir_data,'full_system_small_data_eye_1e-2_10_100_affine');
 	-- local dir_meta=paths.concat(dir_data,'face_baselines_small_data_tps_200_1e-4_100');
-	local dir_meta=paths.concat(dir_data,'face_baselines_small_data_affine_200_1e-3_100');
-	shrinkModelFiles(dir_meta);
+	-- local dir_meta=paths.concat(dir_data,'ft_kp_imagenet_full');
+	-- shrinkModelFiles(dir_meta);
 
 end
 

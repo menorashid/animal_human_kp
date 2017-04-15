@@ -3,7 +3,7 @@ import numpy as np;
 matplotlib.use('Agg')
 # matplotlib.use('PS') 
 import matplotlib.pyplot as plt;
-matplotlib.rcParams.update({'font.size': 16})
+matplotlib.rcParams.update({'font.size': 19})
 from matplotlib.backends.backend_pdf import PdfPages
 import os;
 from PIL import Image,ImageDraw,ImageFont;
@@ -183,8 +183,8 @@ def plotErrorBars(dict_to_plot,x_lim,y_lim,xlabel,y_label,title,out_file,margin=
 def plotSimple(xAndYs,out_file,title='',xlabel='',ylabel='',legend_entries=None,loc=0,outside=False,logscale=False,colors=None,xticks=None):
     plt.title(title);
     plt.grid(1);
-    plt.xlabel(xlabel);
-    plt.ylabel(ylabel);
+    plt.xlabel(xlabel,fontsize=24);
+    plt.ylabel(ylabel,fontsize=24);
     if logscale:
         plt.gca().set_xscale('log')
     # assert len(xs)==len(ys)
@@ -235,8 +235,8 @@ def plotGroupBar(out_file,dict_vals,xtick_labels,legend_vals,colors,xlabel='',yl
     plt.figure();
     plt.grid(1);
     plt.title(title);
-    plt.xlabel(xlabel);
-    plt.ylabel(ylabel);
+    plt.xlabel(xlabel,fontsize=24);
+    plt.ylabel(ylabel,fontsize=24);
     # w=len(legend_vals)*width
     # pos = np.arange(0,w*len(xtick_labels),w)
     pos=range(len(xtick_labels));

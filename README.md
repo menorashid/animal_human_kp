@@ -2,7 +2,7 @@
 This repository provides code for:
 
 [Interspecies Knowledge Transfer for Facial Keypoint Detection.](https://arxiv.org/abs/1704.04023) Maheen Rashid, Xiuye Gu, Yong Jae Lee. CVPR 2017.
-![intro_fig](https://placeholdit.imgix.net/~text?txtsize=28&txt=300%C3%97300&w=300&h=300 "Logo Title Text 1")
+![alt text](https://www.dropbox.com/s/w7q156x5i33on2n/1_13_gt.jpg)
 
 If you find this repo useful please cite our work:
 ```bib

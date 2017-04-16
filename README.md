@@ -72,13 +72,14 @@ To test pretrained model run the following commands
 ```bash
 cd torch
 th test.th -out_dir_images <path to results directory>
-python ../python/visualize_results.py --test_dir <path to results directory> 
 ```
 after replacing <path to results directory> with the path to the folder where you would like the output images to be saved.
 
-A webpage with the results would be in the results directory.
+A webpage with the results, a text file with the accuracy numbers, and a bar graph, would be in the results directory.
 ```bash
 <path to results directory>/results.html
+<path to results directory>/stats.txt
+<path to results directory>/bar.pdf
 ```
 
 ## Training

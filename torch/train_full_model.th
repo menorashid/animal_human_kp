@@ -101,8 +101,7 @@ function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTota
                                                 false,--saveImage
                                                 false,--euclideanloss true for testing
                                                 mean_im,std_im);
-
-
+    
     local grad_mid=net:get(2):backward(midoutputs, dloss);
 
     local loss_mid=nil;
@@ -120,7 +119,7 @@ function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTota
         grad_mid[{{},1,{},{}}]=grad_mid_clone[{{},3,{},{}}];
         grad_mid[{{},3,{},{}}]=grad_mid_clone[{{},1,{},{}}];
     end
-    
+
     net:get(1):backward(inputs, grad_mid);
 
     if params_dual then
@@ -168,9 +167,6 @@ function train(params)
     
 
     paths.mkdir(out_dir);
-    out_dir_debug=paths.concat(out_dir,'debug');
-    print (out_dir_debug);
-    paths.mkdir(out_dir_debug);
     local out_dir_intermediate=paths.concat(out_dir,'intermediate');
     local out_dir_final=paths.concat(out_dir,'final');
     paths.mkdir(out_dir_intermediate);
@@ -276,7 +272,8 @@ function train(params)
             end
         end
 
-        local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,                optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im)
+        local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,
+            optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im)
         
         if not loss_mid then
             loss_mid=train_loss;
@@ -313,10 +310,7 @@ function train(params)
 			local batch_targets=vd.training_set.label;
 		    
             local loss = forward_helper:forward(td,net,batch_inputs,batch_targets,false,true,mean_im,std_im)
-            -- doTheForward(batch_inputs,batch_targets,nil,params.padTPS,mean_im,std_im);
-                -- ,paths.concat(out_dir_debug,''..i..'_'),params.padTPS);
-            -- 
-                -- 
+           
             val_losses[#val_losses+1]=loss;
             val_losses_iter[#val_losses_iter+1]=i;
 
@@ -351,7 +345,6 @@ function train(params)
             visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
             visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
         end
-
 	end
 
     -- save final model
@@ -385,7 +378,7 @@ cmd:option('-full_model_flag',false,'true if resuming training from full model')
 -- cmd:option('-affine',true);
 
 cmd:option('-face_detection_model_path','../models/human_face_model.dat','key point detection network model path');
-cmd:option('-outDir','temp','directory to save final and intermediate models etc');
+cmd:option('-outDir','../scratch/train_full_model','directory to save final and intermediate models etc');
 
 cmd:option('learningRate', 1e-2)
 cmd:option('multiplierBottom',1/100,'learning rate multiplier for beginning layers of localization net');

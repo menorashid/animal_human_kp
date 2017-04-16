@@ -282,7 +282,11 @@ function train(params)
         end
 
         if i%params.dispPlotAfter==0 then
-            visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+            if params.testAfter>0 and #val_losses>0 then
+                visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_plot);       
+            else
+                visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+            end
         end
 
     end
@@ -294,8 +298,10 @@ function train(params)
     
     if params.testAfter>0 and #val_losses>0 then
         npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
+        visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_plot);
+    else
+        visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
     end
-    visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
     net=nil;
     collectgarbage()
 end
@@ -310,7 +316,7 @@ cmd:text('Options')
 
 local epoch_size=275;
 
-cmd:option('-outDir','temp','directory to save final and intermediate models etc');
+cmd:option('-outDir','../scratch/train_warping','directory to save final and intermediate models etc');
 
 cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
 cmd:option('-model','../models/tps_localization_net_untrained.dat');

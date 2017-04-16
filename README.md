@@ -51,7 +51,7 @@ unzip <path to data zip file>
 ```
 
 ## Models
-To download all the pretrained and untrained models go [here](https://www.dropbox.com/s/4r2ghpwoncq656t/release_models.zip) (8.6 GB)
+To download all the pretrained and untrained models go [here](https://www.dropbox.com/s/44ocinlmx8mp8v2/release_models.zip) (145 MB)
 
 Run the following commands
 ```bash
@@ -59,13 +59,13 @@ cd models
 unzip <path to models zip file>
 ```
 Otherwise add the individual models to *models/*
-* [Full model for horses with tps warping](https://www.dropbox.com/s/3tc6qxqv9qw3suq/horse_full_model.dat)(4.4 GB)
-* [Full model for horses with affine warping](https://www.dropbox.com/s/crg4ss6bbn0pt0n/horse_full_model_affine.dat)(4.4 GB)
-* [TPS Warping model for horses](https://www.dropbox.com/s/penbxkrpu9on0js/horse_tps_model.dat)(738 MB)
-* [Affine Warping model for horses](https://www.dropbox.com/s/1c6ujbh49ye8j61/horse_affine_model.dat)(764 MB)
-* [Keypoint network trained on human faces](https://www.dropbox.com/s/u3l2qrmke66t62n/human_face_model.dat)(3.4 GB)
-* [Untrained TPS Warping model](https://www.dropbox.com/s/19twyz9865zrz2a/tps_localization_net_untrained.dat)(111 MB)
-* [Untrained Affine Warping model](https://www.dropbox.com/s/byxphqqmzrkstpa/affine_localization_net_untrained.dat)(121 MB)
+* [Full model for horses with tps warping](https://www.dropbox.com/s/g0e7tj2r708eue1/horse_full_model_tps.dat)(36 MB)
+* [Full model for horses with affine warping](https://www.dropbox.com/s/3vj7nts5f1v0ry0/horse_full_model_affine.dat)(63 MB)
+* [TPS Warping model for horses](https://www.dropbox.com/s/3un0dild6xar8uf/horse_tps_model.dat)(34 MB)
+* [Affine Warping model for horses](https://www.dropbox.com/s/o146cyvnx6hxy47/horse_affine_model.dat)(61 MB)
+* [Keypoint network trained on human faces](https://www.dropbox.com/s/ksnzq43fvbsstyp/human_face_model.dat)(2.3 MB)
+* [Untrained TPS Warping model](https://www.dropbox.com/s/rvqf2qtmaklvoff/tps_localization_net_untrained.dat)(23 MB)
+* [Untrained Affine Warping model](https://www.dropbox.com/s/9o7mblgt1ftkebo/affine_localization_net_untrained.dat)(29 MB)
 
 ## Testing
 To test pretrained model run the following commands

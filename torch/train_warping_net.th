@@ -181,7 +181,8 @@ function train(params)
                         file_path_human=params.human_data_path,
                         augmentation=params.augmentation,
                         humanImage=false,
-                        limit=params.limit};
+                        limit=params.limit,
+                        bgr=params.bgr};
 
     local td=data_animal_human(data_params);
     td.params.input_size={size_out,size_out};
@@ -203,10 +204,12 @@ function train(params)
     local val_losses = {};
     local val_losses_iter = {};
 
+    local counter=0;
     for i=1,params.iterations do
         
         if params.decreaseAfter then
-            if i%params.decreaseAfter==0 then
+            if i%params.decreaseAfter==0 and counter==0 then
+                counter=counter+1;
                 params.learningRate=params.learningRate/10;
                 optimState.learningRate=params.learningRate;
                 optimStateTotal=getOptimStateTotal(params,parameters,10,logger);
@@ -267,6 +270,7 @@ function train(params)
         -- also save losses
         if i%params.saveAfter==0 then
             local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
+            net:clearState()
             torch.save(out_file_intermediate,net);
             local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
             npy4th.savenpy(out_file_loss_intermediate, torch.Tensor(losses))
@@ -284,6 +288,7 @@ function train(params)
     end
 
     -- save final model
+    net:clearState()
     torch.save(out_file_net,net);
     npy4th.savenpy(out_file_loss, torch.Tensor(losses))
     
@@ -291,7 +296,8 @@ function train(params)
         npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
     end
     visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
-
+    net=nil;
+    collectgarbage()
 end
 
 
@@ -302,12 +308,13 @@ cmd:text('Train Full network')
 cmd:text()
 cmd:text('Options')
 
-local epoch_size=56;
+local epoch_size=275;
 
 cmd:option('-outDir','temp','directory to save final and intermediate models etc');
 
 cmd:option('-num_ctrl_pts',25,'num of ctrl pts in tps warping net');
 cmd:option('-model','../models/tps_localization_net_untrained.dat');
+cmd:option('-bgr',true,'switch to bgr for imagenet finetuning');
 cmd:option('affine',false);
 
 -- cmd:option('-model','../models/affine_localization_net_untrained.dat');

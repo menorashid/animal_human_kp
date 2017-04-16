@@ -250,8 +250,8 @@ def plotGroupBar(out_file,dict_vals,xtick_labels,legend_vals,colors,xlabel='',yl
     ax.set_xticks([p + len(legend_vals)/2.0 * width for p in pos])
     # print 'xticks' ,[p + len(legend_vals)/2.0 * width for p in pos]
     ax.set_xticklabels(xtick_labels,rotation=0)
-    # ax.legend( legend_vals,loc=loc)
-    plt.legend(legend_vals,bbox_to_anchor=(0., 0, 1., 1), ncol=2);
+    ax.legend( legend_vals,loc=loc)
+    # plt.legend(legend_vals,bbox_to_anchor=(0., 0, 1., 1), ncol=2);
         # , mode="expand", borderaxespad=0.)
 # Setting the x-axis and y-axis limits
     # plt.xlim(xlim[0],xlim[1])

@@ -40,8 +40,15 @@ do
         end
     end
     
-    function Visualize:saveBatchImagesWithKeypointsSensitive(im_all,pts_all,file_info,mean,scale,colors,pointSize,binary)
+    function Visualize:saveBatchImagesWithKeypointsSensitive(im_all,pts_all,file_info,mean,scale,colors,pointSize,binary,bgr)
+        if bgr then
+            local im_all_clone=im_all:clone();
+            im_all[{{},1,{},{}}]=im_all_clone[{{},3,{},{}}]
+            im_all[{{},3,{},{}}]=im_all_clone[{{},1,{},{}}]
+        end
+
         if mean~=nil then
+
             for idx_rgb=1,3 do
                 im_all[{{},idx_rgb,{},{}}]=im_all[{{},idx_rgb,{},{}}]+mean[idx_rgb];
             end
@@ -49,7 +56,13 @@ do
 
         for idx_im=1,im_all:size(1) do
             local out_file= file_info[1]..idx_im..file_info[2]
-            local im_new=self:drawKeyPointsSensitive(im_all[idx_im]:clone(),pts_all[idx_im],scale,colors,pointSize,binary[idx_im]);
+            local im_curr=im_all[idx_im]:clone();
+            -- if bgr then
+            --     local im_curr_clone=im_curr:clone();
+            --     im_curr[{1,{},{}}]=im_curr_clone[{3,{},{}}];
+            --     im_curr[{3,{},{}}]=im_curr_clone[{1,{},{}}];
+            -- end
+            local im_new=self:drawKeyPointsSensitive(im_curr:clone(),pts_all[idx_im],scale,colors,pointSize,binary[idx_im]);
             image.save(out_file,im_new);
         end
     end

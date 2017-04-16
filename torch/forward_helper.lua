@@ -63,11 +63,11 @@ do
 
 	        local binary=batch_targets[{{},{},3}]:clone();
 
-	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary);
+	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary,td.bgr);
 
 	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},nil,{-1,1},colors,pointSize,binary);
 
-	        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary);
+	        visualize:saveBatchImagesWithKeypointsSensitive(midoutputs_view,outputs_view:transpose(2,3),{saveImage,'_warp.jpg'},td.params.imagenet_mean,{-1,1},colors,pointSize,binary,td.bgr);
 
 	        visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,t_pts_view,{saveImage,'_org_nokp.jpg'},nil,{-1,1},colors,-1,binary);
 

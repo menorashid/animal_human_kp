@@ -3,8 +3,6 @@ This repository provides code for:
 
 [Interspecies Knowledge Transfer for Facial Keypoint Detection.](https://arxiv.org/abs/1704.04023) Maheen Rashid, Xiuye Gu, Yong Jae Lee. CVPR 2017.
 
-This version of the code is for an older version of the paper. Updated code will be made available very soon.
-
 If you have any question you can contact Maheen Rashid (mhnrashid at ucdavis dot edu)
 
 ## Getting Started
@@ -92,7 +90,7 @@ For details on training run
 cd torch
 th train_full_model.th -help
 ```
-To train the model with affine warping uncomment lines 373-375. Currently, all parameters are the parameters used in the paper.
+To train the model with affine warping uncomment lines 377-378. Currently, all parameters are the parameters used in the paper.
 
 The file for training the warping network is 
 ```
@@ -103,4 +101,4 @@ For details on training run
 cd torch
 th train_warping_net.th -help
 ```
-To train the model with affine warping uncomment lines 313-314.
+To train the model with affine warping uncomment lines 326-327.

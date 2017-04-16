@@ -12,6 +12,8 @@ do
         self.mean_file=args.mean_file;
         self.std_file=args.std_file;
 
+        self.bgr=args.bgr;
+
         self.start_idx_horse=1;
         self.params={input_size={32,32},
                     mean={122,117,104},
@@ -418,8 +420,14 @@ do
 
                 img_horse,img_human,label_horse,label_human=self:processImAndLabel(img_horse,img_human,label_horse,label_human,params)
 
-                training_set_horse.data[curr_idx]=img_horse:int();
-                training_set_human.data[curr_idx]=img_human:int();
+                if self.bgr then
+                    local img_horse_temp=img_horse:clone();
+                    img_horse[{1,{},{}}]=img_horse_temp[{3,{},{}}];
+                    img_horse[{3,{},{}}]=img_horse_temp[{1,{},{}}];
+                end
+
+                training_set_horse.data[curr_idx]=img_horse;
+                training_set_human.data[curr_idx]=img_human;
                 
                 training_set_horse.label[curr_idx]=label_horse;
                 training_set_human.label[curr_idx]=label_human;
@@ -527,8 +535,14 @@ do
                 end
                 
                 img_horse,label_horse,label_human=self:processImAndLabelNoIm(img_horse,img_path_human,label_horse,label_human,params)
+                
+                if self.bgr then
+                    local img_horse_temp=img_horse:clone();
+                    img_horse[{1,{},{}}]=img_horse_temp[{3,{},{}}];
+                    img_horse[{3,{},{}}]=img_horse_temp[{1,{},{}}];
+                end
 
-                training_set_horse.data[curr_idx]=img_horse:int();
+                training_set_horse.data[curr_idx]=img_horse;
                 
                 training_set_horse.label[curr_idx]=label_horse;
                 training_set_human.label[curr_idx]=label_human;

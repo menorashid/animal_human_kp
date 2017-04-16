@@ -101,8 +101,7 @@ function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTota
                                                 false,--saveImage
                                                 false,--euclideanloss true for testing
                                                 mean_im,std_im);
-
-
+    
     local grad_mid=net:get(2):backward(midoutputs, dloss);
 
     local loss_mid=nil;
@@ -114,7 +113,13 @@ function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTota
         std_rep=torch.repeatTensor(std_rep,grad_mid:size(1),1,1,1):type(grad_mid:type());
         grad_mid=grad_mid:cdiv(std_rep);    
     end
-    
+
+    if td.bgr then
+        local grad_mid_clone=grad_mid:clone();
+        grad_mid[{{},1,{},{}}]=grad_mid_clone[{{},3,{},{}}];
+        grad_mid[{{},3,{},{}}]=grad_mid_clone[{{},1,{},{}}];
+    end
+
     net:get(1):backward(inputs, grad_mid);
 
     if params_dual then
@@ -162,9 +167,6 @@ function train(params)
     
 
     paths.mkdir(out_dir);
-    out_dir_debug=paths.concat(out_dir,'debug');
-    print (out_dir_debug);
-    paths.mkdir(out_dir_debug);
     local out_dir_intermediate=paths.concat(out_dir,'intermediate');
     local out_dir_final=paths.concat(out_dir,'final');
     paths.mkdir(out_dir_intermediate);
@@ -233,6 +235,7 @@ function train(params)
                         limit=params.limit,
                         input_size={224,224},
                         humanImage=false,
+                        bgr=params.bgr
                         };
                         
     local td=data_animal_human(data_params);
@@ -261,7 +264,7 @@ function train(params)
     for i=1,params.iterations do
 
         if params.decreaseAfter then
-            if i%params.decreaseAfter==0 and counter==0 then
+            if i%params.decreaseAfter==0 and counter<params.numDecrease then
                 counter=counter+1;
                 params.learningRate=params.learningRate/10;
                 optimState.learningRate=params.learningRate;
@@ -269,7 +272,8 @@ function train(params)
             end
         end
 
-        local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,                optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im)
+        local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,
+            optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im)
         
         if not loss_mid then
             loss_mid=train_loss;
@@ -306,10 +310,7 @@ function train(params)
 			local batch_targets=vd.training_set.label;
 		    
             local loss = forward_helper:forward(td,net,batch_inputs,batch_targets,false,true,mean_im,std_im)
-            -- doTheForward(batch_inputs,batch_targets,nil,params.padTPS,mean_im,std_im);
-                -- ,paths.concat(out_dir_debug,''..i..'_'),params.padTPS);
-            -- 
-                -- 
+           
             val_losses[#val_losses+1]=loss;
             val_losses_iter[#val_losses_iter+1]=i;
 
@@ -324,6 +325,7 @@ function train(params)
         if i%params.saveAfter==0 then
             local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
             
+            net:clearState();
             torch.save(out_file_intermediate,net);
             
             local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
@@ -343,10 +345,10 @@ function train(params)
             visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
             visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
         end
-
 	end
 
     -- save final model
+    net:clearState()
     torch.save(out_file_net,net);
     npy4th.savenpy(out_file_loss, torch.Tensor(losses))
     
@@ -356,6 +358,8 @@ function train(params)
     visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
     visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
     visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
+    net=nil;
+    collectgarbage();
 end
 
 cmd = torch.CmdLine()
@@ -364,7 +368,7 @@ cmd:text('Train Full network')
 cmd:text()
 cmd:text('Options')
 
-local epoch_size=275;
+local epoch_size=56;
 
 cmd:option('-tps_model_path','../models/horse_tps_model.dat','localization net path');
 cmd:option('-affine',false,'false if using thin plate spline warping');
@@ -372,10 +376,9 @@ cmd:option('-full_model_flag',false,'true if resuming training from full model')
 
 -- cmd:option('-tps_model_path','../models/horse_affine_model.dat');
 -- cmd:option('-affine',true);
--- cmd:option('-full_model_flag',false);
 
 cmd:option('-face_detection_model_path','../models/human_face_model.dat','key point detection network model path');
-cmd:option('-outDir','temp','directory to save final and intermediate models etc');
+cmd:option('-outDir','../scratch/train_full_model','directory to save final and intermediate models etc');
 
 cmd:option('learningRate', 1e-2)
 cmd:option('multiplierBottom',1/100,'learning rate multiplier for beginning layers of localization net');
@@ -389,13 +392,14 @@ cmd:option('-testAfter',30,'num iterations after which to get validation loss');
 cmd:option('-dispAfter',1,'num iterations after which to display training loss');
 cmd:option('-dispPlotAfter',120,'num iterations after which to save loss plots');
 cmd:option('-decreaseAfter',50*epoch_size,'num iterations after which to decrease learning rate');
+cmd:option('-numDecrease',2);
 
 cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
 cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
 
 cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
-cmd:option('-horse_data_path','../data/train_horse_minloss.txt','animal training data file path');
-cmd:option('-human_data_path','../data/train_face_noIm_minloss.txt','human training data file path');
+cmd:option('-horse_data_path','../data/train_horse.txt','animal training data file path');
+cmd:option('-human_data_path','../data/train_face_noIm.txt','human training data file path');
 
 cmd:option('dual',true,'true if using warping net loss alongside final loss. false for baselines');
 cmd:option('learningRateDecay',5e-6)
@@ -404,5 +408,7 @@ cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
 cmd:option('augmentation' , true,'true if shuffling and augmenting data');
 cmd:option('-gpu',1,'gpu to run the training on');
+
+cmd:option('-bgr',true,'switching to bgr mode for imagenet finetuning');
 
 train(cmd:parse(arg));

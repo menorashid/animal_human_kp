@@ -57,7 +57,8 @@ function test(params)
                     augmentation=false,
                     limit=params.limit,
                     input_size={224,224},
-                    imagenet_mean=true};
+                    imagenet_mean=true,
+                    bgr=params.bgr};
 
     if params.face then
         data_params.imagenet_mean=false;
@@ -105,13 +106,13 @@ function test(params)
     end
 
     val_losses_ind=torch.Tensor(val_losses_ind);
-    print (val_losses_ind:size())
+    -- print (val_losses_ind:size())
     
     if val_losses_ind:size(1)>#td.lines_horse then
         val_losses_ind=val_losses_ind[{{1,#td.lines_horse}}];
     end
     
-    print (val_losses_ind:size())
+    -- print (val_losses_ind:size())
     
     print (params.model_path);
     
@@ -122,6 +123,24 @@ function test(params)
 
     npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
     npy4th.savenpy(out_file_loss_val_ind, val_losses_ind)
+
+    local python_exec_string = {};
+    python_exec_string[#python_exec_string+1]='python ../python/visualize_results.py';
+    python_exec_string[#python_exec_string+1]='--test_dir';
+    python_exec_string[#python_exec_string+1]=params.out_dir_images;
+    python_exec_string[#python_exec_string+1]='--test_file';
+    python_exec_string[#python_exec_string+1]=params.val_data_path;
+    python_exec_string[#python_exec_string+1]='--batchSize';
+    python_exec_string[#python_exec_string+1]=params.batchSize;
+    python_exec_string[#python_exec_string+1]='--iterations';
+    python_exec_string[#python_exec_string+1]=params.iterations;
+    local py_str='';
+    for str_num=1,#python_exec_string do
+        py_str=py_str..python_exec_string[str_num]..' ';
+    end
+
+    print (py_str);
+    os.execute(py_str)
 end
 
 cmd = torch.CmdLine()
@@ -134,14 +153,14 @@ cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image p
 cmd:option('-limit',-1,'num of test data to read. negative means all');
 
 cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
-cmd:option('-model_path','../models/horse_full_model.dat');
-cmd:option('-out_dir_images','temp');
+cmd:option('-model_path','../models/horse_full_model_tps.dat');
+cmd:option('-out_dir_images','../scratch/test_images');
 
 cmd:option('-gpu',1,'gpu to run the training on');
 
 cmd:option('-iterations',2,'num of iterations to run');
 cmd:option('-batchSize',100,'batch size');
-
+cmd:option('-bgr',true);
 
 cmd:option('-face',false,'true if testing a model with no warping network');
 

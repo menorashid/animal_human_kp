@@ -27,6 +27,12 @@ do
 	    	std_im=td.std_im;
 	    end
 
+	    if td.bgr then
+	    	local midoutputs_clone=midoutputs:clone();
+	    	midoutputs[{{},1,{},{}}]=midoutputs_clone[{{},3,{},{}}]
+	    	midoutputs[{{},3,{},{}}]=midoutputs_clone[{{},1,{},{}}]
+	    end
+
         midoutputs=tps_helper:switchMeans(midoutputs,td.params.imagenet_mean,mean_im,std_im)
 
 	    local outputs=net:get(2):forward(midoutputs);

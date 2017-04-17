@@ -11,7 +11,7 @@ If you find this repo useful please cite our work:
 ```bib
 @inproceedings{rashid2016interspecies,
   title={Interspecies Knowledge Transfer for Facial Keypoint Detection},
-  author={Rashid, Maheen and Gu, Xiuye and Jae Lee, Yong},
+  author={Rashid, Maheen and Gu, Xiuye and Lee, Yong Jae},
   booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
   year={2017}
 }

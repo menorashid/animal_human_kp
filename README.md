@@ -9,7 +9,7 @@ This repository provides code for:
 
 If you find this repo useful please cite our work:
 ```bib
-@inproceedings{rashid2016interspecies,
+@inproceedings{rashid2017interspecies,
   title={Interspecies Knowledge Transfer for Facial Keypoint Detection},
   author={Rashid, Maheen and Gu, Xiuye and Lee, Yong Jae},
   booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},

@@ -574,6 +574,9 @@ do
 
         local curr_idx=1;
 
+        local t_load=0;
+        local t_augment=0;
+
         while curr_idx<= batch_size do
             
             local img_path_horse=lines_horse[list_idx][1];
@@ -583,7 +586,6 @@ do
             local label_path_human=lines_human[list_idx][1];
             
             local status_img_horse,img_horse=pcall(image.load,img_path_horse);
-            
             
             if status_img_horse then
                 local label_horse=npy4th.loadnpy(label_path_horse):double();
@@ -615,8 +617,9 @@ do
             list_idx=(list_idx%list_size)+1;
             curr_idx=curr_idx+1;
         end
+
         return list_idx;
-    
+        
     end
     
 end

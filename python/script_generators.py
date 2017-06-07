@@ -1175,8 +1175,10 @@ def makeComparativeHTML():
     out_dir=os.path.join(dir_meta,'iccv_img');
     out_dir_meta=os.path.join(out_dir,'comparative_htmls');
     util.mkdir(out_dir_meta);
-    compare_whats=[['us_tps_horse','bl_tps_horse'],['us_tps_horse','bl_ft_horse'],['us_tif_tps_sheep','tif_sheep']]
-    # compare_whats=[['us_tps_horse','bl_ft_horse']]
+    compare_whats=[['us_tps_horse','bl_tps_horse'],['us_tps_horse','bl_ft_horse']]
+    # ,['us_tif_tps_sheep','tif_sheep']]
+    # compare_whats=[['us_tps_sheep','bl_ft_sheep']]
+    # ['us_tps_sheep','bl_tps_sheep']
 
     bl_ft_dir=os.path.join(dir_meta,'face_baselines_small_data_rerun_50_dec/matches_5_3531_horse_minloss/resume_50/test_images');
     bl_alexnet_dir=os.path.join(dir_meta,'cvpr_rebuttal','imagenet_last_scratch_small_data/small_train_minloss_3531/resume_50/test_images');
@@ -1228,9 +1230,10 @@ def makeComparativeHTML():
         else:
             if 'horse' in compare_what[0]:
                 test_file='../data/test_minLoss_horse.txt';
+                batch_size=100;
             elif 'sheep' in compare_what[0]:
                 test_file=os.path.join(dir_meta,'data_check/sheep/matches_5_sheep_test_allKP_minloss.txt');
-            batch_size=100;
+                batch_size=50;
             num_iter=2;
             if 'ft' in compare_what[1]:
                 post_ims_them=['_org.jpg',];
@@ -1245,6 +1248,7 @@ def makeComparativeHTML():
 
         avgs=[];
         im_paths_all=[]
+        idx_key=0;
         for key_curr,test_dir_curr in keys:
             
             # errors_curr=us_getErrorsAll(us_test,dir_curr,post_us,num_iter,batch_size);
@@ -1252,9 +1256,16 @@ def makeComparativeHTML():
                 errors_curr=viz.them_getErrorsAll(test_dir_curr[0],test_dir_curr[1]);
                 them_dir=test_dir_curr[2];
             else:
+                # if idx_key==0:
+                #     batch_size=50;
+                #     num_iter=2;
+                # else:
+                batch_size=100;
+                num_iter=1;
                 _,gt_pt_files,_=viz.us_getFilePres(test_file,test_dir_curr,post_us,num_iter,batch_size);
                 errors_curr=viz.us_getErrorsAll(test_file,test_dir_curr,post_us,num_iter,batch_size);
                 im_paths_all.append(gt_pt_files);
+            idx_key+=1;
 
             err=np.array(errors_curr);
             bin_keep=err>=0;
@@ -1265,9 +1276,10 @@ def makeComparativeHTML():
             avgs.append(avg);
             
             
-        biggest_diff=avgs[1]-avgs[0];
-        # biggest_diff=avgs[1];
-        idx_sort=np.argsort(biggest_diff)[::-1];
+        # biggest_diff=avgs[1]-avgs[0];
+        biggest_diff=avgs[0];
+        idx_sort=np.argsort(biggest_diff)
+        # [::-1];
         ims=[];
         captions=[];
         for idx_curr in idx_sort:
@@ -1277,6 +1289,16 @@ def makeComparativeHTML():
             files_us=[os.path.join(us_dir,file_curr+post_im_curr) for post_im_curr in post_ims_us ];
             captions_us=['us']*len(files_us);
             
+
+            file_curr=file_curr.split('_');
+            if int(file_curr[0])>1:
+                # print file_curr
+                file_curr[0]='1';
+                file_curr[1]=str(int(file_curr[1])+50);
+            # print file_curr    
+            file_curr='_'.join(file_curr);
+            
+
             files_them=[os.path.join(them_dir,file_curr+post_im_curr) for post_im_curr in post_ims_them ];
             captions_them=['them']*len(files_them);
             files_all=files_us+files_them;
@@ -1656,7 +1678,7 @@ def main():
     # script_bl_tps(True)
     # script_full_us_tps(True)
     # getNN()
-    # makeComparativeHTML()
+    makeComparativeHTML()
     # makeTifDirs();
     # getNN();
     # script_bl_affine('vision3')
@@ -1667,7 +1689,7 @@ def main():
     # rerun_scratch('vision1');
     # makeThreshCurves();
 
-    makeAblationGraph()    
+    # makeAblationGraph()    
     # makeComparisonBarGraphs()
 
     # script_bl_tps_resume(vision1=True)

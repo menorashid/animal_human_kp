@@ -33,7 +33,7 @@ function doTheUpdate(td,net,parameters,gradParameters,tps,optimMethod,optimState
     td.training_set_horse.data=td.training_set_horse.data:cuda();
     td.training_set_human.label=td.training_set_human.label:cuda();
     td.training_set_horse.label=td.training_set_horse.label:cuda();
-
+    
     local horse_labels,human_labels,batch_inputs,_,_=td:getBatchPoints()
     
     local gt_output;
@@ -43,9 +43,9 @@ function doTheUpdate(td,net,parameters,gradParameters,tps,optimMethod,optimState
     else
         gt_output=tps:getGTOutput(human_labels,horse_labels);
     end
-
     local batch_targets = gt_output:clone();
 
+    
 
     net:zeroGradParameters()
     local outputs=net:forward(batch_inputs);
@@ -411,7 +411,8 @@ function train(params)
     print ('moving to GPU');
     net = net:cuda();
     tps=tps:cuda();
-    net:training();
+    -- net:training();
+    net:evaluate();
 
     logger:writeString(dump.tostring('done')..'\n');
     print ('done');
@@ -568,7 +569,7 @@ cmd:option('-model','../models/tps_localization_net_untrained.dat');
 cmd:option('-bgr',true,'switch to bgr for imagenet finetuning');
 cmd:option('affine',false);
 
-cmd:option('-outDir','/disk2/horse_cvpr/tps_nets_bn_fix/horse_3531','directory to save final and intermediate models etc');
+cmd:option('-outDir','../scratch/tps_old','directory to save final and intermediate models etc');
 -- cmd:option('-model','../models/imagenet_soumith/model_55_locnet.dat');
 -- cmd:option('pivot',24);
 
@@ -612,7 +613,7 @@ cmd:option('multiplierBottom',1/10);
 cmd:option('beta1', 0.9)
 cmd:option('beta2', 0.999)
 cmd:option('epsilon', 1e-8)
-cmd:option('augmentation' , true);
+cmd:option('augmentation' , false);
 cmd:option('-gpu',1,'gpu to run the training on');
 
 cmd:option('-iterations_test',2,'num of iterations to run');

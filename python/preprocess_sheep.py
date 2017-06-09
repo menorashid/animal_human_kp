@@ -261,11 +261,47 @@ def script_saveDataAndVerify():
     visualize.writeHTML(out_file_html,ims_html,captions_html);
     print out_file_html.replace(dir_server,click_str);
 
+def script_makeTrainTestFiles():
+    dir_meta='../data';
+    dir_old=os.path.join(dir_meta,'sheep');
+    dir_new=os.path.join(dir_meta,'sheep_for_eight');
+    files=[file_curr for file_curr in os.listdir(dir_old) if file_curr.startswith('matches_5') and file_curr.endswith('.txt')]
+    replace_string=['/home/SSD3/maheen-data/horse_project/data_check/sheep',dir_new];
+    replace_string_8=[os.path.join(dir_new,'npy'),os.path.join(dir_new,'npy_8')];
+    
+    out_files=[];
+    for file_curr in files:
+        old_file=os.path.join(dir_old,file_curr);
+        out_file=os.path.join(dir_new,file_curr);
+        lines=util.readLinesFromFile(old_file);
+        lines=[line_curr.replace(replace_string[0],replace_string[1]) for line_curr in lines];
+        # print old_file,out_file,lines[0];
+        out_files.append(out_file)
+        util.writeFile(out_file,lines);
+
+    out_files_eight=[];
+    for file_curr in out_files:
+        out_file=file_curr[:file_curr.rindex('.')]+'_8.txt';
+        lines=util.readLinesFromFile(file_curr);
+        lines=[line_curr.replace(replace_string_8[0],replace_string_8[1]) for line_curr in lines];
+        # print out_file,lines[0];
+        out_files_eight.append(out_file);
+        util.writeFile(out_file,lines);
+
+    for file_curr in out_files+out_files_eight:
+
+        lines=util.readLinesFromFile(file_curr);
+        print file_curr,len(lines);
+        
+        for line_curr in lines:
+            line_split=line_curr.split(' ');
+            for split_curr in line_split:
+                assert os.path.exists(split_curr)
+
 
 def main():
-    pass;    
-
-
+    pass;
+    
 
 if __name__=='__main__':
     main();

@@ -40,6 +40,54 @@ def createParams(type_Experiment):
 
     return params;
 
+def saveMeanSTDFiles(train_file,out_file_pre,resize_size,disp_idx=100):
+    im_files=util.readLinesFromFile(train_file);
+    im_files=[line_curr.split(' ')[0] for line_curr in im_files];
+    mean_im = getMeanImage(im_files,resize_size,disp_idx=disp_idx)
+    std_im = getSTDImage(im_files,mean_im,resize_size,disp_idx=disp_idx);
+    out_file_mean=out_file_pre+'_mean.png';
+    out_file_std=out_file_pre+'_std.png';
+    print mean_im.shape
+    cv2.imwrite(out_file_mean,mean_im);
+    cv2.imwrite(out_file_std,std_im);
+    return out_file_mean,out_file_std;
+
+def getMeanImage(im_files,resize_size,disp_idx=1000):
+    running_total=np.zeros((resize_size[0],resize_size[1],3));
+    for idx_file_curr,file_curr in enumerate(im_files):
+        if idx_file_curr%disp_idx==0:
+            print idx_file_curr;
+        im=cv2.imread(file_curr)
+        if im.shape[0]!=resize_size[0] or im.shape[1]!=resize_size[1]:
+            print 'RESIZING'
+            im=scipy.misc.imresize(im,resize_size);
+        running_total=running_total+im;
+
+    running_total=running_total.astype(np.float);
+    mean=running_total/len(im_files);
+    # print np.min(mean),np.max(mean);
+    return mean;
+
+def getSTDImage(im_files,mean,resize_size,disp_idx=1000):
+    running_total=np.zeros(mean.shape);
+    resize_size=(mean.shape[0],mean.shape[1])
+    for idx_file_curr,file_curr in enumerate(im_files):
+        if idx_file_curr%disp_idx==0:
+            print idx_file_curr;
+        im=cv2.imread(file_curr);
+        if im.shape[0]!=resize_size[0] or im.shape[1]!=resize_size[1]:
+            im=scipy.misc.imresize(im,resize_size);
+#         im=scipy.misc.imresize(im,resize_size);
+        std_curr=np.power(mean-im,2)
+        running_total=running_total+im;
+
+    running_total=running_total.astype(np.float);
+    std=running_total/len(im_files);
+    std=np.sqrt(std)
+    # print np.min(std),np.max(std);
+    return std;
+
+
 def parseAnnoFile(path_txt,path_pre=None,face=False,sheep=False,box=False,tif=False):
     face_data=util.readLinesFromFile(path_txt);
     

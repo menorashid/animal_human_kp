@@ -300,7 +300,12 @@ def script_makeTrainTestFiles():
 
 
 def main():
-    pass;
+    dir_files='../data/sheep_for_eight';
+    train_file=os.path.join(dir_files,'matches_5_sheep_train_allKP_minloss.txt');
+    out_file_pre=os.path.join(dir_files,'sheep');
+    resize_size=(224,224);
+    preprocessing_data.saveMeanSTDFiles(train_file,out_file_pre,resize_size,disp_idx=100)
+
     
 
 if __name__=='__main__':

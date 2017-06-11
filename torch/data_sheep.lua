@@ -121,15 +121,25 @@ do
         if im then
             image.hflip(im,im);
         end
-
+        
         label[{{},2}]=-1*label[{{},2}]
-        local temp=label[{1,{}}]:clone();
-        label[{1,{}}]=label[{2,{}}]:clone()
-        label[{2,{}}]=temp;
+        if label:size(1)==5 then
+            local temp=label[{1,{}}]:clone();
+            label[{1,{}}]=label[{2,{}}]:clone()
+            label[{2,{}}]=temp;
 
-        temp=label[{4,{}}]:clone();
-        label[{4,{}}]=label[{5,{}}]:clone()
-        label[{5,{}}]=temp;
+            temp=label[{4,{}}]:clone();
+            label[{4,{}}]=label[{5,{}}]:clone()
+            label[{5,{}}]=temp;
+        else
+            for idx_flip=1,3 do
+                local idx_match=7-idx_flip;
+                -- print (idx_flip,idx_match);
+                local temp=label[{idx_flip,{}}]:clone();
+                label[{idx_flip,{}}]=label[{idx_match,{}}]:clone()
+                label[{idx_match,{}}]=temp;
+            end
+        end
         
         return im,label;
 

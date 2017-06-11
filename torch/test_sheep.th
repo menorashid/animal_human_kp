@@ -70,7 +70,7 @@ function test(params)
         --                 batch_size=params.batchSize,
         --                 mean_file=params.mean_im_path,
         --                 std_file=params.std_im_path,
-        --                 augmentation=false,
+        --                 augmentation=true,
         --                 limit=params.limit,
         --                 input_size={224,224},
         --                 imagenet_mean=true,
@@ -85,17 +85,18 @@ function test(params)
         --     end
         -- end
 
-        data_params={file_path_horse=params.horse_data_path,
-                            file_path_human=params.human_data_path,
-                            batch_size=params.batchSize,
-                            mean_file=params.mean_im_path,
-                            std_file=params.std_im_path,
-                            augmentation=false,
-                            limit=params.limit,
-                            input_size={224,224},
-                            bgr=params.bgr,
-                            num_key_points=params.num_key_points,
-                            optimize=true};
+        data_params={file_path_human=params.human_data_path,
+                    file_path_horse=params.horse_data_path,
+                    batch_size=params.batchSize,
+                    mean_file=params.mean_im_path,
+                    std_file=params.std_im_path,
+                    augmentation=true,
+                    limit=params.limit,
+                    input_size={224,224},
+                    bgr=params.bgr,
+                    num_key_points=params.num_key_points,
+                    num_key_points_human=params.num_key_points_human,
+                    optimize=true};
                             
         -- td=data_animal_human(data_params);
 
@@ -115,83 +116,99 @@ function test(params)
 
             td:getTrainingData();
 
+            -- td.training_set.data=td.training_set.data:cuda();
+            -- td.training_set.label=td.training_set.label:cuda();
+
+            -- local batch_inputs=td.training_set.data;
+            -- local batch_targets=td.training_set.label;
+
             td.training_set_horse.data=td.training_set_horse.data:cuda();
             td.training_set_horse.label=td.training_set_horse.label:cuda();
 
             local batch_inputs=td.training_set_horse.data;
             local batch_targets=td.training_set_horse.label;
 
+
+
             local loss,loss_all;
             local saveImage=paths.concat(out_dir_images,i..'_')
-            local colors={{0,255,0}};
+            local colors={
+            {255,0,0},
+            {0,255,0},
+            {0,0,255},
+            {0,255,255},
+            {255,0,255},
+            {255,255,0},
+            {0,0,0},
+            {255,255,255}};
             local pointSize=10;
 
-            -- local binary=batch_targets[{{},{},3}]:clone();
-            -- local batch_inputs_view=batch_inputs:double():clone();
-            -- local imagenet_mean=td.params.imagenet_mean
-            -- visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},imagenet_mean,{-1,1},colors,pointSize,binary,td.bgr);
+            local binary=batch_targets[{{},{},3}]:clone();
+            local batch_inputs_view=batch_inputs:double():clone();
+            local imagenet_mean=td.params.imagenet_mean
+            visualize:saveBatchImagesWithKeypointsSensitive(batch_inputs_view,batch_targets[{{},{},{1,2}}]:transpose(2,3),{saveImage,'_gt.jpg'},imagenet_mean,{-1,1},colors,pointSize,binary,td.bgr);
 
-            if params.face then
-                print 'nowarp';
-                loss, loss_all = forward_helper:forward_noWarp(td,net,batch_inputs,batch_targets,saveImage,true);
-            elseif params.soumith then
-                print 'soumith locnet';
-                loss, loss_all = forward_helper:forward(td,net,batch_inputs,batch_targets,saveImage,true,mean_im,std_im);
-            else
-                loss,loss_all = forward_helper:forward(td,net,batch_inputs,batch_targets,saveImage,true)
-            end
+            -- if params.face then
+            --     print 'nowarp';
+            --     loss, loss_all = forward_helper:forward_noWarp(td,net,batch_inputs,batch_targets,saveImage,true);
+            -- elseif params.soumith then
+            --     print 'soumith locnet';
+            --     loss, loss_all = forward_helper:forward(td,net,batch_inputs,batch_targets,saveImage,true,mean_im,std_im);
+            -- else
+            --     loss,loss_all = forward_helper:forward(td,net,batch_inputs,batch_targets,saveImage,true)
+            -- end
 
-            for idx_ind=1,loss_all:size(1) do
-                val_losses_ind[#val_losses_ind+1]=loss_all[idx_ind];
-            end
+            -- for idx_ind=1,loss_all:size(1) do
+            --     val_losses_ind[#val_losses_ind+1]=loss_all[idx_ind];
+            -- end
             
-            val_losses[#val_losses+1]=loss;
-            val_losses_iter[#val_losses_iter+1]=i;
+            -- val_losses[#val_losses+1]=loss;
+            -- val_losses_iter[#val_losses_iter+1]=i;
 
-            disp_str=string.format("minibatches processed: %6s, val loss = %6.6f", i, val_losses[#val_losses])
-            logger:writeString(dump.tostring(disp_str)..'\n');
-            print(disp_str)
+            -- disp_str=string.format("minibatches processed: %6s, val loss = %6.6f", i, val_losses[#val_losses])
+            -- logger:writeString(dump.tostring(disp_str)..'\n');
+            -- print(disp_str)
 
     end
 
-    val_losses_ind=torch.Tensor(val_losses_ind);
-    print (val_losses_ind:size())
+    -- val_losses_ind=torch.Tensor(val_losses_ind);
+    -- print (val_losses_ind:size())
     
-    if val_losses_ind:size(1)>#td.lines_horse then
-        val_losses_ind=val_losses_ind[{{1,#td.lines_horse}}];
-    end
+    -- if val_losses_ind:size(1)>#td.lines_horse then
+    --     val_losses_ind=val_losses_ind[{{1,#td.lines_horse}}];
+    -- end
     
-    print (val_losses_ind:size())
+    -- print (val_losses_ind:size())
     
-    print (params.model_path);
+    -- print (params.model_path);
     
-    disp_str=string.format("minibatches processed: all, val loss = %6.6f", torch.mean(val_losses_ind))
-    logger:writeString(dump.tostring(disp_str)..'\n');
+    -- disp_str=string.format("minibatches processed: all, val loss = %6.6f", torch.mean(val_losses_ind))
+    -- logger:writeString(dump.tostring(disp_str)..'\n');
     
-    print(disp_str)
+    -- print(disp_str)
 
-    npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
-    npy4th.savenpy(out_file_loss_val_ind, val_losses_ind)
+    -- npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
+    -- npy4th.savenpy(out_file_loss_val_ind, val_losses_ind)
 
-    local python_exec_string = {};
-    python_exec_string[#python_exec_string+1]='python ../python/visualize_results.py';
-    python_exec_string[#python_exec_string+1]='--test_dir';
-    python_exec_string[#python_exec_string+1]=params.out_dir_images;
-    python_exec_string[#python_exec_string+1]='--test_file';
-    python_exec_string[#python_exec_string+1]=params.val_data_path;
-    python_exec_string[#python_exec_string+1]='--batchSize';
-    python_exec_string[#python_exec_string+1]=params.batchSize;
-    python_exec_string[#python_exec_string+1]='--iterations';
-    python_exec_string[#python_exec_string+1]=params.iterations;
-    python_exec_string[#python_exec_string+1]='--justHTML'
-    local py_str='';
-    for str_num=1,#python_exec_string do
-        py_str=py_str..python_exec_string[str_num]..' ';
-    end
+    -- local python_exec_string = {};
+    -- python_exec_string[#python_exec_string+1]='python ../python/visualize_results.py';
+    -- python_exec_string[#python_exec_string+1]='--test_dir';
+    -- python_exec_string[#python_exec_string+1]=params.out_dir_images;
+    -- python_exec_string[#python_exec_string+1]='--test_file';
+    -- python_exec_string[#python_exec_string+1]=params.val_data_path;
+    -- python_exec_string[#python_exec_string+1]='--batchSize';
+    -- python_exec_string[#python_exec_string+1]=params.batchSize;
+    -- python_exec_string[#python_exec_string+1]='--iterations';
+    -- python_exec_string[#python_exec_string+1]=params.iterations;
+    -- python_exec_string[#python_exec_string+1]='--justHTML'
+    -- local py_str='';
+    -- for str_num=1,#python_exec_string do
+    --     py_str=py_str..python_exec_string[str_num]..' ';
+    -- end
 
-    print (py_str);
-    os.execute(py_str)
-    -- py.exec(py_str);
+    -- print (py_str);
+    -- os.execute(py_str)
+
 end
 
 cmd = torch.CmdLine()
@@ -210,6 +227,7 @@ cmd:option('-human_data_path','../experiments/data_check/aflw/matches_5_sheep_te
 
 
 cmd:option('-num_key_points',8);
+cmd:option('-num_key_points_human',5);
 -- cmd:option('-model_path','../experiments/all_sheep_models/sheep/full_model/final/model_all_final.dat');
 cmd:option('-model_path','../models/pretrained_sheep_full_8.dat');
 cmd:option('-out_dir_images','../experiments/eight_point_experiments/debug_sheep_viz');

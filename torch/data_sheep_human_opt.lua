@@ -19,6 +19,9 @@ do
         if not args.num_key_points then
             args.num_key_points=5;
         end
+        if not args.num_key_points_human then
+            args.num_key_points_human=5;
+        end
 
         if self.soumith_mean_file and self.soumith_locnet then
             local meanStd=torch.load(self.soumith_mean_file);
@@ -35,6 +38,7 @@ do
                     mean={122,117,104},
                     imagenet_mean={122,117,104},
                     labels_shape={args.num_key_points,3},
+                    labels_shape_human={args.num_key_points_human,3},
                     angles={-10,10}};
 
         if args.input_size then
@@ -110,7 +114,7 @@ do
         local num_lines=#self.lines_horse;
         im_all_horse=torch.zeros(num_lines,3,self.params.input_size[1],self.params.input_size[2])
         
-        local labels_human = torch.zeros(num_lines,5,3);
+        local labels_human = torch.zeros(num_lines,self.params.labels_shape_human[1],self.params.labels_shape_human[2]);
         local lines_human={};
 
         local labels_horse = torch.zeros(num_lines,self.params.labels_shape[1],self.params.labels_shape[2]);
@@ -183,7 +187,7 @@ do
             ,self.params.input_size[2]);
         self.training_set_horse.label=torch.zeros(self.batch_size,self.params.labels_shape[1],self.params.labels_shape[2]);
 
-        self.training_set_human.label=torch.zeros(self.batch_size,5,3);
+        self.training_set_human.label=torch.zeros(self.batch_size,self.params.labels_shape_human[1],self.params.labels_shape_human[2]);
 
         -- self.training_set_horse.label:clone();
         self.start_idx_horse=self:addTrainingDataNoIm(self.training_set_horse,self.training_set_human,self.batch_size,
@@ -278,13 +282,23 @@ do
         end
 
         label[{{},2}]=-1*label[{{},2}]
-        local temp=label[{1,{}}]:clone();
-        label[{1,{}}]=label[{2,{}}]:clone()
-        label[{2,{}}]=temp;
+        if label:size(1)==5 then
+            local temp=label[{1,{}}]:clone();
+            label[{1,{}}]=label[{2,{}}]:clone()
+            label[{2,{}}]=temp;
 
-        temp=label[{4,{}}]:clone();
-        label[{4,{}}]=label[{5,{}}]:clone()
-        label[{5,{}}]=temp;
+            temp=label[{4,{}}]:clone();
+            label[{4,{}}]=label[{5,{}}]:clone()
+            label[{5,{}}]=temp;
+        else
+            for idx_flip=1,3 do
+                local idx_match=7-idx_flip;
+                -- print (idx_flip,idx_match);
+                local temp=label[{idx_flip,{}}]:clone();
+                label[{idx_flip,{}}]=label[{idx_match,{}}]:clone()
+                label[{idx_match,{}}]=temp;
+            end
+        end
         -- for i=1,label:size(1) do
         --     label[i][2]=1-(label[i][2]+1)
         -- end
@@ -353,7 +367,17 @@ do
                     else
                         isValid=false;
                     end
+                end
 
+                if not isValid then
+                    break;
+                end
+            end
+
+            for i=1,label_human:size(1) do
+                if label_human[i][3]>0 and isValid then
+                    
+                
                     ans = rotation_matrix_human*torch.Tensor({label_human[i][2],label_human[i][1]}):view(2,1);
                     label_human[i][1]=ans[2][1];
                     label_human[i][2]=ans[1][1];
@@ -363,13 +387,12 @@ do
                     else
                         isValid=false;
                     end
-
+                
                 end
 
                 if not isValid then
                     break;
                 end
-
             end
 
             iter=iter+1;

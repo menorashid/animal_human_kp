@@ -233,16 +233,24 @@ function saveWarpNetBnFix(model_file,out_file,affine_flag)
 
 end
 
-function modifySheepModel(org_model,out_file,num_keypoints)
+function modifySheepModel(org_model,out_file,num_keypoints,justAdd)
     local net=torch.load(org_model);
-    local last_layer=net:get(2):get(30);
-    net:get(2):remove();
+    local num_in;
+    if not justAdd then
+        num_in=100;
+    else
+        num_in=10;
+    end
+    if not justAdd then
+        local last_layer=net:get(2):get(30);
+        net:get(2):remove();
+    end
     local net_dummy=nn.Sequential();
-    net_dummy:add(nn.Linear(100,num_keypoints*2));
+    net_dummy:add(nn.Linear(num_in,num_keypoints*2));
     net_dummy=makeXavierGaussian(net_dummy);
     print (net_dummy);
     net:get(2):add(net_dummy:get(1));
-    print (net,last_layer)
+    print (net)
     print (out_file)
     torch.save(out_file,net);
 end
@@ -250,9 +258,14 @@ end
 
 function main()
     local org_model='../experiments/all_sheep_models/sheep/full_model/final/model_all_final.dat';
-    local out_file='../models/pretrained_sheep_full_8.dat';
+    local out_file='../models/pretrained_sheep_full_add_8.dat';
     local num_keypoints=8;
-    modifySheepModel(org_model,out_file,num_keypoints)
+    modifySheepModel(org_model,out_file,num_keypoints,true)
+
+    -- local org_model='../experiments/all_sheep_models/sheep/full_model/final/model_all_final.dat';
+    -- local out_file='../models/pretrained_sheep_full_8.dat';
+    -- local num_keypoints=8;
+    -- modifySheepModel(org_model,out_file,num_keypoints)
 
 
     -- local model_file='../models/tps_localization_net_untrained.dat';

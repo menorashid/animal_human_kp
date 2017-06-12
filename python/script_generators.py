@@ -1669,6 +1669,61 @@ def makeNeighborsGraph(system):
     print out_file.replace(dir_server,click_str);
 
 def main():
+
+    torch_file='train_full_model_sheep.th';
+    epoch_size=7;
+    train_human='../experiments/data_check/aflw/matches_5_sheep_train_allKP_noIm.txt';
+    ft_files=['../models/pretrained_sheep_full_8.dat','../models/pretrained_sheep_full_add_8.dat'];
+
+    post_buffer='_buffer';
+    out_file_sh='../scripts/train_sheep_for_eight'+post_buffer+'.sh';
+    train_sheep='../data/sheep_for_eight'+post_buffer+'/matches_5_sheep_train_allKP_8.txt';
+    test_sheep='../data/sheep_for_eight'+post_buffer+'/matches_5_sheep_test_allKP_minloss_8.txt';
+    out_dirs=['../experiments/eight_point_experiments/ft_last_16'+post_buffer,'../experiments/eight_point_experiments/ft_add_16'+post_buffer]
+
+    # ft_file='../models/pretrained_sheep_full_add_8.dat';
+    # out_dir='../experiments/eight_point_experiments/ft_add_16';
+    
+    dual=False;
+    commands=[];
+    for ft_file,out_dir in zip(ft_files,out_dirs):
+
+        command_curr=['th',torch_file];
+        command_curr.extend(['-face_detection_model_path',ft_file]);
+        command_curr.extend(['learningRate',str(1e-3)]);
+        command_curr.extend(['multiplierMid',str(0.1)]);
+        command_curr.extend(['multiplierBottom',str(0.01)]);
+        command_curr.extend(['-horse_data_path',train_sheep]);
+        command_curr.extend(['-human_data_path',train_human]);
+        command_curr.extend(['-val_data_path',test_sheep]);
+        command_curr.extend(['-numDecrease',1]);
+        command_curr.extend(['-outDir',out_dir]);
+        command_curr.extend(['-bgr']);
+        command_curr.extend(['-optimize']);
+        if dual:
+            command_curr.extend(['dual']);
+        command_curr.extend(['-iterations',50*epoch_size]);
+        command_curr.extend(['-saveAfter',5*epoch_size]);
+        command_curr.extend(['-testAfter',1*epoch_size]);
+        command_curr.extend(['-decreaseAfter',50*epoch_size]);
+
+
+        command_curr.extend(['-last_higher']);
+        command_curr.extend(['-full_model_flag']);
+
+        command_curr=[str(c) for c in command_curr];
+        command_curr=' '.join(command_curr);
+        print command_curr;
+        commands.append(command_curr);
+
+    util.writeFile(out_file_sh,commands);
+    print out_file_sh;
+
+
+
+
+
+    # return
     # script_bl_tps_smooth(True)
     # script_bl_tps_lr_search()
     # script_bl_tps_lr_search()
@@ -1678,7 +1733,7 @@ def main():
     # script_bl_tps(True)
     # script_full_us_tps(True)
     # getNN()
-    makeComparativeHTML()
+    # makeComparativeHTML()
     # makeTifDirs();
     # getNN();
     # script_bl_affine('vision3')

@@ -134,7 +134,7 @@ def saveImAndNumpyNoExclusion():
     dir_meta='../data'
     dir_data=os.path.join(dir_meta,'sheep_org');
 
-    out_dir_meta=os.path.join(dir_meta,'sheep_for_eight');
+    out_dir_meta=os.path.join(dir_meta,'sheep_for_eight_buffer');
     util.mkdir(out_dir_meta);
 
     raw_anno_tif_file=os.path.join(out_dir_meta,'raw_anno_tif.txt')
@@ -158,6 +158,7 @@ def saveImAndNumpyNoExclusion():
     for line_org,line_new in lines_match:
         line_org[0]=line_new[0];
 
+    buff_ratio=0.05;
     # get matched data
     new_data=[' '.join(line_curr) for _,line_curr in lines_match];
     new_data_split=[line_curr for _,line_curr in lines_match];
@@ -182,7 +183,7 @@ def saveImAndNumpyNoExclusion():
     params_dict['out_file_problem']=os.path.join(params_dict['out_dir_meta'],'problem_8.txt');
     params_dict['overwrite'] = True;
     params_dict['resize']=(224,224);
-    params_dict['buff_ratio']=None;
+    params_dict['buff_ratio']=buff_ratio;
     params=preprocessing_data.createParams('makeBboxPairFiles');
     params=params(**params_dict);
     path_im,bbox,anno_points=preprocessing_data.script_makeBboxPairFiles(params)
@@ -226,7 +227,7 @@ def saveImAndNumpyNoExclusion():
     params_dict['out_file_problem']=os.path.join(params_dict['out_dir_meta'],'problem.txt');
     params_dict['overwrite'] = True;
     params_dict['resize']=(224,224);
-    params_dict['buff_ratio']=None;
+    params_dict['buff_ratio']=buff_ratio;
     params=preprocessing_data.createParams('makeBboxPairFiles');
     params=params(**params_dict);
     preprocessing_data.script_makeBboxPairFiles(params)
@@ -236,7 +237,7 @@ def script_saveDataAndVerify():
     saveImAndNumpyNoExclusion()
 
     dir_meta='../data'
-    out_dir_meta=os.path.join(dir_meta,'sheep_for_eight');
+    out_dir_meta=os.path.join(dir_meta,'sheep_for_eight_buffer');
     out_dir_im=os.path.join(dir_server,'horse_project','scratch/sheep_viz_noEx');
     util.mkdir(out_dir_im);
     out_file_html=os.path.join(out_dir_im,'sanity_check.html');
@@ -264,7 +265,7 @@ def script_saveDataAndVerify():
 def script_makeTrainTestFiles():
     dir_meta='../data';
     dir_old=os.path.join(dir_meta,'sheep');
-    dir_new=os.path.join(dir_meta,'sheep_for_eight');
+    dir_new=os.path.join(dir_meta,'sheep_for_eight_buffer');
     files=[file_curr for file_curr in os.listdir(dir_old) if file_curr.startswith('matches_5') and file_curr.endswith('.txt')]
     replace_string=['/home/SSD3/maheen-data/horse_project/data_check/sheep',dir_new];
     replace_string_8=[os.path.join(dir_new,'npy'),os.path.join(dir_new,'npy_8')];
@@ -300,11 +301,13 @@ def script_makeTrainTestFiles():
 
 
 def main():
-    dir_files='../data/sheep_for_eight';
-    train_file=os.path.join(dir_files,'matches_5_sheep_train_allKP_minloss.txt');
-    out_file_pre=os.path.join(dir_files,'sheep');
-    resize_size=(224,224);
-    preprocessing_data.saveMeanSTDFiles(train_file,out_file_pre,resize_size,disp_idx=100)
+    script_makeTrainTestFiles()
+    # script_saveDataAndVerify()
+    # dir_files='../data/sheep_for_eight';
+    # train_file=os.path.join(dir_files,'matches_5_sheep_train_allKP_minloss.txt');
+    # out_file_pre=os.path.join(dir_files,'sheep');
+    # resize_size=(224,224);
+    # preprocessing_data.saveMeanSTDFiles(train_file,out_file_pre,resize_size,disp_idx=100)
 
     
 

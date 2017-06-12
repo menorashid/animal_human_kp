@@ -419,20 +419,31 @@ do
             -- print ('idx_curr',idx_curr);
             -- print ('label_curr_horse',label_curr_horse);
             -- print ('label_curr_human',label_curr_human);
-            local keep_col=label_curr_horse[{{},3}]:gt(0)+label_curr_human[{{},3}]:gt(0)
-            local idx_keep=torch.find(keep_col:gt(1):type('torch.CudaTensor'), 1)
             
+            -- to change when running dual training.
+            -- local keep_col=label_curr_horse[{{},3}]:gt(0)+label_curr_human[{{},3}]:gt(0)
+            -- local idx_keep=torch.find(keep_col:gt(1):type('torch.CudaTensor'), 1)
+            
+            local keep_col=label_curr_horse[{{},3}]:gt(0)
+            -- +label_curr_human[{{},3}]:gt(0)
+            local idx_keep=torch.find(keep_col:gt(0):type('torch.CudaTensor'), 1)
+            
+
             local label_curr_pos_horse=torch.zeros(#idx_keep,2):type(label_curr_horse:type());
             for idx_pos=1,#idx_keep do
                 label_curr_pos_horse[idx_pos]=label_curr_horse[{idx_keep[idx_pos],{1,2}}];
             end
+
+            keep_col=label_curr_human[{{},3}]:gt(0)
+            idx_keep=torch.find(keep_col:gt(0):type('torch.CudaTensor'), 1)
+            
 
             local label_curr_pos_human=torch.zeros(#idx_keep,2):type(label_curr_human:type());
             for idx_pos=1,#idx_keep do
                 label_curr_pos_human[idx_pos]=label_curr_human[{idx_keep[idx_pos],{1,2}}];
             end
 
-            assert (label_curr_pos_human:size(1)==label_curr_pos_horse:size(1));
+            -- assert (label_curr_pos_human:size(1)==label_curr_pos_horse:size(1));
             if (label_curr_pos_human:size(1)>2) then
                 horse_labels[#horse_labels+1]=label_curr_pos_horse:t();
                 human_labels[#human_labels+1]=label_curr_pos_human:t();

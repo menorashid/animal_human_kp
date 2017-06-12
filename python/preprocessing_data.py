@@ -262,6 +262,10 @@ def addBuffer(im,bbox_curr,anno_points_curr,buff_size,tot_size):
     im_new=np.pad(im,[(to_pad[2],to_pad[3]),(to_pad[0],to_pad[1]),(0,0)],'edge');
     bbox_added=[bbox_curr[idx]+to_pad[(idx/2)*2] for idx in range(len(bbox_curr))];
     anno_points_new=np.array(anno_points_curr);
+    if anno_points_new.shape[1]<3:
+        anno_points_new=np.hstack((anno_points_new,np.ones((anno_points_new.shape[0],1))))
+
+    # print to_pad,anno_points_new;
     anno_points_new[anno_points_new[:,2]>0,0]=anno_points_new[anno_points_new[:,2]>0,0]+to_pad[0];
     anno_points_new[anno_points_new[:,2]>0,1]=anno_points_new[anno_points_new[:,2]>0,1]+to_pad[2];
     for i in range(2):
@@ -364,7 +368,10 @@ def script_makeBboxPairFiles(params):
 
     problem_cases=[];
     for arg in args:
-        problem_cases.append(saveBBoxImAndNpyResize(arg));
+        if buff_ratio is None:
+            problem_cases.append(saveBBoxImAndNpyResize(arg));
+        else:
+            problem_cases.append(saveBBoxImAndNpyResizeBuffer(arg));
     # print len(args),len(path_im);
     # p=multiprocessing.Pool(multiprocessing.cpu_count());
 

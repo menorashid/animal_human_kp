@@ -121,7 +121,7 @@ do
         if im then
             image.hflip(im,im);
         end
-        
+
         label[{{},2}]=-1*label[{{},2}]
         if label:size(1)==5 then
             local temp=label[{1,{}}]:clone();

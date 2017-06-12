@@ -166,7 +166,7 @@ def them_getErrorsAll(gt_file,pred_file):
     errors_all=getErrorPercentageImSize(im_sizes,diffs_all);
     return errors_all;
 
-def saveHTML(out_us,us_test,batch_size=50,num_iter=2,justHTML=False):
+def saveHTML(out_us,us_test,batch_size=50,num_iter=2,justHTML=False,eight=False):
     dir_server='./';
     post_us=['_gt_pts.npy','_pred_pts.npy']
     
@@ -218,7 +218,10 @@ def saveHTML(out_us,us_test,batch_size=50,num_iter=2,justHTML=False):
         print out_file_html
 
         labels=['Ours','thems'];
-        ticks=['LE','RE','N','LM','RM','ALL'];
+        if eight:
+            ticks=['LTE','LBE','LE','RE','RBE','RTE','N','M','ALL'];
+        else:
+            ticks=['LE','RE','N','LM','RM','ALL'];
         colors=['b','g'];
         ylim=None;
         errors_all=[];
@@ -251,12 +254,13 @@ if __name__=='__main__':
     parser.add_option('--batchSize',type=int,default=100,help="batchSize specified in test.th");
     parser.add_option('--iterations',type=int,default=2,help="iterations specified in test.th");
     parser.add_option('--justHTML',action="store_true",default=False,help="does not require per im score files");
+    parser.add_option('--eight',action="store_true",default=False,help="for 8 keypoints");
 
     (options, args) = parser.parse_args()
     # print options;
     # print args;
     # out_us='/home/SSD3/maheen-data/horse_project/test_git/test_full_trained_model/test_images';
     # us_test='../data/test_minLoss_horse.txt';
-    saveHTML(options.test_dir,options.test_file,options.batchSize,options.iterations,options.justHTML)
+    saveHTML(options.test_dir,options.test_file,options.batchSize,options.iterations,options.justHTML,options.eight)
 
     

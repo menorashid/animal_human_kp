@@ -1,0 +1,571 @@
+require 'image'
+npy4th = require 'npy4th'
+require 'data_sheep';
+require 'data_sheep_human_opt';
+require 'cunn'
+require 'cudnn'
+require 'nn';
+require 'optim'
+require 'stn'
+npy4th=require 'npy4th';
+require 'torchx';
+require 'gnuplot';
+dump=require 'dump';
+tps_helper=require 'tps_helper';
+visualize=require 'visualize';
+loss_helper=require 'loss_helper';
+forward_helper=require 'forward_helper';
+
+function getOptimStateTotal(params,parameters,layer_pivot,logger)
+    local optimStateTotal={}
+
+    for layer_num=1,#parameters do
+        local str=''..layer_num;
+        for layer_size_idx=1,#parameters[layer_num]:size() do
+            str=str..' '..parameters[layer_num]:size(layer_size_idx);
+        end
+
+        local learningRate_curr=params.learningRate;
+        if layer_num<=layer_pivot[1] then
+            learningRate_curr=learningRate_curr*params.multiplierBottom;
+        elseif layer_num<=layer_pivot[2] then
+            learningRate_curr=learningRate_curr*params.multiplierMid;
+        elseif params.last_higher and #parameters-layer_num<=1 then
+            learningRate_curr=learningRate_curr*10;
+        else
+            learningRate_curr=learningRate_curr;
+        end
+
+        local optimState_curr={learningRate=learningRate_curr,
+                learningRateDecay=params.learningRateDecay ,
+                beta1=params.beta1 ,
+                beta2=params.beta2 ,
+                epsilon=params.epsilon };
+
+        str=str..' '..optimState_curr.learningRate;
+        print (str);
+        logger:writeString(dump.tostring(str)..'\n');
+        optimStateTotal[#optimStateTotal+1]=optimState_curr;
+    end
+    return optimStateTotal;
+end
+
+function createIntegratedModel(tps_model_path,face_detection_model,full_model_flag)
+    local tot_net;
+    if not full_model_flag then
+        local locnet = torch.load(tps_model_path);
+        print (locnet);
+        local tranet=nn.Transpose({2,3},{3,4})
+        local concat=nn.ConcatTable()
+        concat:add(tranet)
+        concat:add(locnet)
+
+        local net=nn.Sequential();
+        net:add(concat)
+        net:add(nn.BilinearSamplerBHWD())
+        local spanet;
+
+        spanet=net;
+        spanet:add(nn.Transpose({3,4},{2,3}));
+        
+        tot_net=nn.Sequential();
+        tot_net:add(spanet);
+        local kp_net=torch.load(face_detection_model);
+        tot_net:add(kp_net);
+    else
+        tot_net=torch.load(face_detection_model);
+    end
+
+    cudnn.convert(tot_net,cudnn);
+
+    return tot_net;
+end
+
+function doTheUpdate(td,net,parameters,gradParameters,optimMethod,optimStateTotal,params_dual,affine_flag,mean_im,std_im,train_euclidean,saveImage)
+    
+    -- local t=os.clock();
+    td:getTrainingData();
+    -- print (os.clock()-t);
+    td.training_set_horse.data=td.training_set_horse.data:cuda();
+    td.training_set_human.label=td.training_set_human.label:cuda();
+    td.training_set_horse.label=td.training_set_horse.label:cuda();
+
+    local horse_labels,human_labels,batch_inputs,_,data_idx=td:getBatchPoints(true)
+    local batch_targets_final=torch.zeros(#horse_labels,
+                                        td.training_set_horse.label:size(2),
+                                        td.training_set_horse.label:size(3)):type(td.training_set_horse.label:type())
+    for label_num=1,batch_targets_final:size(1) do
+        batch_targets_final[label_num]=td.training_set_horse.label[data_idx[label_num]]:clone();
+    end
+
+    
+    net:zeroGradParameters();
+    local loss,dloss,midoutputs,inputs,tps_layer=
+                                            forward_helper:forward(td,net,batch_inputs,batch_targets_final,
+                                                saveImage,--saveImage
+                                                false,--euclideanloss true for testing
+                                                mean_im,std_im,
+                                                train_euclidean);
+
+
+    local grad_mid=net:get(2):backward(midoutputs, dloss);
+
+    local loss_mid=nil;
+
+    if td.soumith_locnet then
+        grad_mid=grad_mid:mul(255);
+        for dim_num =1,3 do
+            grad_mid[{{},dim_num,{},{}}]:mul(td.soumith_std[dim_num]);
+        end
+    end
+
+
+    if std_im then
+        grad_mid=grad_mid:cdiv(std_im);    
+    else
+        local std_rep=td.std_im:view(1,td.std_im:size(1),td.std_im:size(2),td.std_im:size(3)):clone();
+        std_rep=torch.repeatTensor(std_rep,grad_mid:size(1),1,1,1):type(grad_mid:type());
+        grad_mid=grad_mid:cdiv(std_rep);    
+    end
+    
+    -- print (grad_mid:size())
+    -- print (td.bgr);
+
+    if td.bgr then
+        local grad_mid_clone=grad_mid:clone();
+        grad_mid[{{},1,{},{}}]=grad_mid_clone[{{},3,{},{}}];
+        grad_mid[{{},3,{},{}}]=grad_mid_clone[{{},1,{},{}}];
+    end
+    net:get(1):backward(inputs, grad_mid);
+    -- print 'bef udaling'
+    if params_dual then
+        -- print 'udaling'
+        local gt_output;
+        if affine_flag then
+            local gt_params=tps_helper:getGTParams(human_labels,horse_labels);
+            gt_output=tps_layer:clone():forward(gt_params)
+        else
+            gt_output = tps_layer:getGTOutput(human_labels,horse_labels);
+        end
+        local batch_targets = gt_output:clone();            
+        local lossD_mid=loss_helper:getLossD_L2(net:get(1):get(1):get(2).output,batch_targets);
+        loss_mid=loss_helper:getLoss_L2(net:get(1):get(1):get(2).output,batch_targets);
+        net:get(1):get(1):get(2):backward(inputs,lossD_mid);
+        
+    end
+    
+    
+    for layer_num =1, #parameters do
+        local fevalScoreVar = function(x)
+            return loss, gradParameters[layer_num]
+        end
+        optimMethod(fevalScoreVar, parameters[layer_num], optimStateTotal[layer_num]);
+    end
+
+    return loss,loss_mid;
+
+end
+
+function train(params) 
+    print ('setting_threads');
+    torch.setnumthreads(1);
+	local data_path=params.data_path;
+	local out_dir=params.outDir
+    local net_file=params.model
+    if params.limit<0 then
+    	params.limit=nil;
+    end
+    local val_data_path;
+    local val_human_path
+
+    if params.testAfter>0 then
+    	val_data_path= params.val_data_path
+    end
+    
+
+    paths.mkdir(out_dir);
+    out_dir_debug=paths.concat(out_dir,'debug');
+    print (out_dir_debug);
+    paths.mkdir(out_dir_debug);
+    local out_dir_intermediate=paths.concat(out_dir,'intermediate');
+    local out_dir_final=paths.concat(out_dir,'final');
+    paths.mkdir(out_dir_intermediate);
+    paths.mkdir(out_dir_final);
+    
+    local out_file_net=paths.concat(out_dir_final,'model_all_final.dat');
+    local out_file_loss=paths.concat(out_dir_final,'loss_final.npy');
+    local out_file_loss_val=paths.concat(out_dir_final,'loss_final_val.npy');
+    
+    local out_file_intermediate_pre = paths.concat(out_dir_intermediate,'model_all_');
+    local out_file_loss_intermediate_pre = paths.concat(out_dir_intermediate,'loss_all_');
+
+    local out_file_loss_plot=paths.concat(out_dir_intermediate,'loss_all.png');
+    local out_file_loss_mid_plot=paths.concat(out_dir_intermediate,'loss_mid.png');
+    local out_file_loss_val_plot=paths.concat(out_dir_intermediate,'loss_val.png');
+    local out_file_log=paths.concat(out_dir_intermediate,'log.txt');
+    local logger=torch.DiskFile(out_file_log,'w');
+
+    logger:writeString(dump.tostring(params)..'\n');
+    print (params);
+
+    cutorch.setDevice(params.gpu);
+
+    local optimState       
+    local optimMethod      
+
+	optimMethod = optim.adam
+	optimState={learningRate=params.learningRate,learningRateDecay=params.learningRateDecay ,beta1=params.beta1 ,beta2=params.beta2 ,epsilon=params.epsilon }
+
+    logger:writeString(dump.tostring('loading network')..'\n');
+    print ('loading network');
+
+    local net=createIntegratedModel(params.tps_model_path,params.face_detection_model_path,params.full_model_flag);
+    net:training();
+    
+    logger:writeString(dump.tostring('done loading network')..'\n');
+    print ('done loading network');
+    -- logger:writeString(dump.tostring(net)..'\n');
+    print (net);
+
+    logger:writeString(dump.tostring('moving to GPU')..'\n');
+    print ('moving to GPU');
+    local net = net:cuda();
+    
+    logger:writeString(dump.tostring('done')..'\n');
+    print ('done');
+
+    logger:writeString(dump.tostring('loading params')..'\n');
+    print ('loading params');
+    
+    local parameters, gradParameters = net:parameters()
+
+    local pivot;
+    if params.pivot_b<0 then
+        pivot={10,22}
+    else
+        -- assert (params.pivot_b)
+        -- assert (params.pivot_u)
+        pivot={params.pivot_b,params.pivot_u};
+    end
+
+    local optimStateTotal=getOptimStateTotal(params,parameters,pivot,logger)
+
+    logger:writeString(dump.tostring('loading done')..'\n');
+    print ('loading done');
+    logger:writeString(dump.tostring(optimState)..'\n');
+    print (optimState)
+
+
+    local data_params;
+    local td;
+    local vd;
+
+    if params.soumith_locnet then
+        data_params={file_path_horse=params.horse_data_path,
+                    file_path_human=params.human_data_path,
+                    batch_size=params.batchSize,
+
+                    vanilla_mean_file=params.mean_im_path,
+                    vanilla_std_file=params.std_im_path,
+
+                    soumith_locnet=params.soumith_locnet,
+                    soumith_mean_file=params.soumith_mean_file,
+                    
+                    augmentation=params.augmentation,
+                    limit=params.limit,
+                    input_size={224,224},
+                    humanImage=false,
+                    bgr=params.bgr,
+                    optimize=params.optimize};
+        
+        td=data_animal_human(data_params);
+        
+        if params.testAfter>0 then
+            data_params.file_path = params.val_data_path;
+            data_params.augmentation=false;
+            data_params.imagenet_mean=false;
+            data_params.soumith=params.soumith_locnet;
+            data_params.mean_file=params.soumith_mean_file
+            vd=data_animal(data_params);
+        end
+
+
+    else
+        data_params={file_path_horse=params.horse_data_path,
+                            file_path_human=params.human_data_path,
+                            batch_size=params.batchSize,
+                            mean_file=params.mean_im_path,
+                            std_file=params.std_im_path,
+                            augmentation=params.augmentation,
+                            limit=params.limit,
+                            input_size={224,224},
+                            humanImage=false,
+                            bgr=params.bgr,
+                            optimize=params.optimize,
+                            num_key_points=params.num_key_points,
+                            num_key_points_human=params.num_key_points_human
+                            };
+                            
+        td=data_animal_human(data_params);
+        
+        if params.testAfter>0 then
+        	data_params.file_path = params.val_data_path;
+        	data_params.augmentation=false;
+            data_params.imagenet_mean=true;
+        	vd=data_animal(data_params);
+    	end
+
+    end
+
+
+    
+
+    local mean_im,std_im;
+    if params.soumith_locnet then
+        mean_im=td.vanilla_mean_im:view(1,td.vanilla_mean_im:size(1),td.vanilla_mean_im:size(2),td.vanilla_mean_im:size(3));
+        std_im=td.vanilla_std_im:view(1,td.vanilla_std_im:size(1),td.vanilla_std_im:size(2),td.vanilla_std_im:size(3));
+    else
+        mean_im=td.mean_im:view(1,td.mean_im:size(1),td.mean_im:size(2),td.mean_im:size(3));
+        std_im=td.std_im:view(1,td.std_im:size(1),td.std_im:size(2),td.std_im:size(3));    
+    end
+
+    mean_im=torch.repeatTensor(mean_im,td.batch_size,1,1,1):cuda();
+    std_im=torch.repeatTensor(std_im,td.batch_size,1,1,1):cuda();
+
+    local losses = {};
+    local losses_mid = {};
+    local losses_iter = {};
+
+    local val_losses = {};
+    local val_losses_iter = {};
+    local counter=0;
+
+    for i=1,params.iterations do
+
+        if params.decreaseAfter then
+            if i%params.decreaseAfter==0 and counter<params.numDecrease then
+                counter=counter+1;
+                params.learningRate=params.learningRate/10;
+                optimState.learningRate=params.learningRate;
+                optimStateTotal=getOptimStateTotal(params,parameters,pivot,logger);
+            end
+        end
+        -- local saveImage=paths.concat(out_dir_debug,i..'_');
+        local time_iter=os.clock();
+        local train_loss,loss_mid= doTheUpdate(td,net,parameters,gradParameters,                
+            optimMethod,optimStateTotal,params.dual,params.affine,mean_im,std_im,params.train_euclidean,false)
+        time_iter=os.clock()-time_iter;
+        
+        if not loss_mid then
+            loss_mid=train_loss;
+        end
+        losses[#losses + 1] = train_loss;
+        losses_mid[#losses_mid+1]=loss_mid;
+        
+        losses_iter[#losses_iter +1] = i;
+
+        if i%params.dispAfter==0 then
+            local disp_str=string.format("lr: %6s, minibatches processed: %6s, loss = %6.6f, midloss = %6.6f, time = %6.6f", optimState.learningRate,i, losses[#losses],losses_mid[#losses_mid],time_iter)
+            logger:writeString(dump.tostring(disp_str)..'\n');
+            print (disp_str);
+
+            local str_score=''..losses[#losses];
+            
+            if str_seg=='nan' or str_score=='nan' then
+                logger:writeString(dump.tostring('QUITTING')..'\n');
+                print('QUITTING');
+                break;
+            end
+        end
+
+
+        if i%params.testAfter==0 and params.testAfter>0 then 
+            -- counter=counter+1;
+            net:evaluate();
+            vd:getTrainingData();
+
+            vd.training_set.data=vd.training_set.data:cuda();
+			vd.training_set.label=vd.training_set.label:cuda();
+
+			local batch_inputs=vd.training_set.data;
+			local batch_targets=vd.training_set.label;
+		    -- print ('vd bgr',vd.bgr);
+            local loss = forward_helper:forward(td,net,batch_inputs,batch_targets,false,true,mean_im,std_im)
+            -- doTheForward(batch_inputs,batch_targets,nil,params.padTPS,mean_im,std_im);
+                -- ,paths.concat(out_dir_debug,''..i..'_'),params.padTPS);
+            -- 
+                -- 
+            val_losses[#val_losses+1]=loss;
+            val_losses_iter[#val_losses_iter+1]=i;
+
+            net:training();
+            disp_str=string.format("minibatches processed: %6s, val loss = %6.6f", i, val_losses[#val_losses])
+            logger:writeString(dump.tostring(disp_str)..'\n');
+            print(disp_str)
+        end
+
+        -- check if model needs to be saved. save it.
+        -- also save losses
+        if i%params.saveAfter==0 then
+            local out_file_intermediate=out_file_intermediate_pre..i..'.dat';
+            
+            net:clearState();
+            torch.save(out_file_intermediate,net);
+            
+            local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'.npy';
+            npy4th.savenpy(out_file_loss_intermediate, torch.Tensor(losses))
+            
+            if params.testAfter>0 then 
+                local out_file_loss_intermediate=out_file_loss_intermediate_pre..i..'_val.npy';
+                npy4th.savenpy(out_file_loss_intermediate, torch.Tensor(val_losses))
+            end
+            visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+            visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
+            visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
+        end
+
+        if i%params.dispPlotAfter==0 then
+            visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+            visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
+            visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
+        end
+        -- if i==5 then
+        --     break;
+        -- end
+	end
+
+    -- save final model
+    net:clearState()
+    torch.save(out_file_net,net);   
+    npy4th.savenpy(out_file_loss, torch.Tensor(losses))
+    
+    if params.testAfter>0 and #val_losses>0 then
+        npy4th.savenpy(out_file_loss_val, torch.Tensor(val_losses))
+    end
+    visualize:plotLossFigure(losses,losses_iter,{},{},out_file_loss_plot);
+    visualize:plotLossFigure(losses_mid,losses_iter,{},{},out_file_loss_mid_plot);
+    visualize:plotLossFigure(losses,losses_iter,val_losses,val_losses_iter,out_file_loss_val_plot);
+    net=net:double();
+    net=nil;
+    collectgarbage();
+
+end
+
+cmd = torch.CmdLine()
+cmd:text()
+cmd:text('Train Full network')
+cmd:text()
+cmd:text('Options')
+
+local epoch_size=56;
+
+cmd:option('-tps_model_path','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/10_3_1e-2_55_eye_fc/final/model_all_final.dat','localization net path');
+cmd:option('-pivot_b',10);
+cmd:option('-pivot_u',22);
+
+cmd:option('-last_higher',false,'set lr for last layer 10x higher');
+
+cmd:option('-numDecrease',2);
+cmd:option('-affine',false,'false if using thin plate spline warping');
+cmd:option('-full_model_flag',false,'true if resuming training from full model');
+cmd:option('-face_detection_model_path','../models/human_face_model.dat','key point detection network model path');
+cmd:option('-outDir','/home/SSD3/maheen-data/horse_project/shrinking_warpNet/vanilla_cnn/full_model/temp','directory to save final and intermediate models etc');
+cmd:option('learningRate', 1e-2)
+cmd:option('multiplierBottom',1/10,'learning rate multiplier for beginning layers of localization net');
+cmd:option('multiplierMid',1/100,'learning rate multiplier for last layers of localization net');
+
+cmd:option('-limit',-1,'num of training data to read. negative means all');
+cmd:option('-iterations',150*epoch_size,'num of iterations to run');
+cmd:option('-saveAfter',30*epoch_size,'num of iterations after which to save model');
+cmd:option('-batchSize',64,'batch size');
+cmd:option('-testAfter',120,'num iterations after which to get validation loss');
+cmd:option('-dispAfter',1,'num iterations after which to display training loss');
+cmd:option('-dispPlotAfter',120,'num iterations after which to save loss plots');
+cmd:option('-decreaseAfter',50*epoch_size,'num iterations after which to decrease learning rate');
+
+cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
+cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
+
+cmd:option('-val_data_path','../data/test_minLoss_horse.txt','validation data file path');
+cmd:option('-horse_data_path','../data/train_horse.txt','animal training data file path');
+cmd:option('-human_data_path','../data/train_face_noIm.txt','human training data file path');
+
+cmd:option('dual',false,'true if using warping net loss alongside final loss. false for baselines');
+cmd:option('learningRateDecay',5e-6)
+cmd:option('beta1', 0.9)
+cmd:option('beta2', 0.999)
+cmd:option('epsilon', 1e-8)
+cmd:option('augmentation' , true,'true if shuffling and augmenting data');
+cmd:option('-gpu',1,'gpu to run the training on');
+
+cmd:option('-bgr',false,'switching to bgr mode for imagenet finetuning');
+cmd:option('-soumith_locnet',false,'whether the locnet has been pre trained on imagenet using soumith code');
+cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7');
+cmd:option('-train_euclidean',false);
+cmd:option('-optimize',false);
+
+cmd:option('-num_key_points',8);
+cmd:option('-num_key_points_human',5);
+params=cmd:parse(arg)
+train(params);
+
+
+
+local python_exec_string = {};
+python_exec_string[#python_exec_string+1]='th test_sheep.th';
+python_exec_string[#python_exec_string+1]='-mean_im_path';
+python_exec_string[#python_exec_string+1]=params.mean_im_path;
+python_exec_string[#python_exec_string+1]='-std_im_path';
+python_exec_string[#python_exec_string+1]=params.std_im_path;
+python_exec_string[#python_exec_string+1]='-batchSize';
+python_exec_string[#python_exec_string+1]=50;
+python_exec_string[#python_exec_string+1]='-iterations';
+python_exec_string[#python_exec_string+1]=2;
+python_exec_string[#python_exec_string+1]='-val_data_path';
+python_exec_string[#python_exec_string+1]=params.val_data_path;
+python_exec_string[#python_exec_string+1]='-model_path';
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'final/model_all_final.dat');
+-- python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'intermediate/model_all_210.dat');
+python_exec_string[#python_exec_string+1]='-out_dir_images';
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'test_images');
+if params.bgr then
+    python_exec_string[#python_exec_string+1]='-bgr';
+end
+if params.soumith_locnet then
+    python_exec_string[#python_exec_string+1]='-soumith';
+    python_exec_string[#python_exec_string+1]='-soumith_mean_file';
+    python_exec_string[#python_exec_string+1]=params.soumith_mean_file;
+end
+
+local py_str='';
+for str_num=1,#python_exec_string do
+    py_str=py_str..python_exec_string[str_num]..' ';
+end
+
+print (py_str);
+os.execute(py_str)
+    
+
+
+-- cmd:option('-mean_im_path','../data/aflw_cvpr_224_mean.png','mean image for image preprocessing for keypoint network training');
+-- cmd:option('-std_im_path','../data/aflw_cvpr_224_std.png','std image for image preprocessing for keypoint network training');
+-- cmd:option('-limit',-1,'num of test data to read. negative means all');
+
+-- cmd:option('-val_data_path','../data/test_minloss_horse_old.txt','validation data file path');
+-- cmd:option('-model_path','/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.1_0.01_5nn/final/model_all_final.dat');
+-- cmd:option('-out_dir_images','/disk2/horse_cvpr/full_net_bgr_224/150_50_euc_0.1_0.01_5nn/test_images');
+
+-- cmd:option('-gpu',1,'gpu to run the training on');
+-- cmd:option('-bgr',true);
+
+-- cmd:option('-iterations',2,'num of iterations to run');
+-- cmd:option('-batchSize',100,'batch size');
+
+
+-- cmd:option('-face',false,'true if testing a model with no warping network');
+
+-- cmd:option('-soumith',false,'true if testing a model with no warping network');
+-- cmd:option('-soumith_mean_file','../models/imagenet_soumith/meanstdCache.t7','true if testing a model with no warping network');
+
+
+

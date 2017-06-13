@@ -1023,7 +1023,7 @@ def makeComparisonBarGraphs():
     util.mkdir(out_dir);
     out_dir=os.path.join(out_dir,'bar_graphs');
     util.mkdir(out_dir);
-    for i in range(3,5):
+    for i in range(10,11):
     # i=6;
 
         if i==0:
@@ -1042,6 +1042,12 @@ def makeComparisonBarGraphs():
             to_include=['ours','bl_tps','bl_ft','scratch'];limit=[0,45];outside=False;loc=2;post='sheep';
         elif i==7:
             to_include=['ours','ours_random'];outside=False;limit=[0,15];loc=2;post='horse';
+        elif i==8:
+            to_include=[a+'_'+b for a in ['last','add'] for b in ['175','210','245']];outside=True;limit=[0,40];loc=1;post='sheep_8';
+        elif i==9:
+            to_include=[b+a for a in ['','_buffer'] for b in ['last','add'] ];outside=False;limit=[0,35];loc=1;post='sheep_8_buffer';
+        elif i==10:
+            to_include=['last_buffer','tif' ];outside=False;limit=[0,35];loc=1;post='sheep_8_buffer_tif';
 
 
     
@@ -1104,17 +1110,74 @@ def makeComparisonBarGraphs():
             test_file=os.path.join(dir_meta,'files_for_sheepCode/sheep_test_us_sheep_minloss.txt');
             num_iter=2;
             batch_size=50;
+        elif post=='sheep_8':
+            dir_meta_curr=os.path.join(dir_meta,'eight_point_experiments');
+            post_buffer='';
+            test_dirs_dict={};
+            colors=['r','g','b','c','m','y','k','w'];
+            num_curr=-1;
+            for scheme in ['last','add']:
+                for epoch_num in ['175','210','245']:
+                    num_curr=num_curr+1;
+                    dir_curr=os.path.join(dir_meta_curr,'ft_'+scheme+'_16','test_images_'+epoch_num);
+                    key_curr=scheme+'_'+epoch_num;
+                    test_dirs_dict[key_curr]=(dir_curr,colors[num_curr]);
+
+            test_file='../data/sheep_for_eight'+post_buffer+'/matches_5_sheep_test_allKP_minloss_8.txt'
+            num_iter=2;
+            batch_size=50; 
+        elif post=='sheep_8_buffer':
+            dir_meta_curr=os.path.join(dir_meta,'eight_point_experiments');
+            post_buffers=['','_buffer'];
+            test_dirs_dict={};
+            colors=['r','g','b','c','m','y','k','w'];
+            num_curr=-1;
+            print to_include
+            for post_buffer in post_buffers:
+                for scheme in ['last','add']:
+                    if post_buffer=='' and scheme=='last' :
+                        epoch_num='_210';
+                    elif post_buffer=='' and scheme=='add' :
+                        epoch_num='_245';
+                    else: 
+                        epoch_num='';
+
+                    num_curr=num_curr+1;
+                    dir_curr=os.path.join(dir_meta_curr,'ft_'+scheme+'_16'+post_buffer,'test_images'+epoch_num);
+                    key_curr=scheme+post_buffer;
+                    print key_curr;
+                    test_dirs_dict[key_curr]=(dir_curr,colors[num_curr]);
+
+            test_file='../data/sheep_for_eight/matches_5_sheep_test_allKP_minloss_8.txt'
+            num_iter=2;
+            batch_size=50; 
+        elif post=='sheep_8_buffer_tif':
+            dir_meta_curr=os.path.join(dir_meta,'eight_point_experiments');
+            test_pre='matches_5_sheep_test_allKP_minloss_8'
+            post_buffer='';
+            tif_dir=[os.path.join('../data/sheep_for_eight'+post_buffer,test_pre+'_tif.txt'),\
+                    os.path.join('../data/sheep_for_eight'+post_buffer,test_pre+'_tif_TIF_result.txt')];
+            # them_test=[os.path.join(dir_input_data,file_curr) for file_curr in them_test];
+            # out_them=[file_curr[:file_curr.rindex('.')]+'_TIF_result.txt' for file_curr in them_test];
+            us_tps_dir=os.path.join(dir_meta_curr,'ft_last_16_buffer/test_images');
+            test_dirs_dict={'tif'+post_buffer:(tif_dir,'g'),'last_buffer':(us_tps_dir,'r')};
+            test_file=os.path.join('../data/sheep_for_eight'+post_buffer,test_pre+'.txt');
+            num_iter=2;
+            batch_size=50;
 
 
         post_us=['_gt_pts.npy','_pred_pts.npy']
-        ticks=['LE','RE','N','LM','RM','ALL'];
+        if post.startswith('sheep_8'):
+            ticks=['LTE','LBE','LE','RE','RBE','RTE','N','M','ALL'];
+        else:
+            ticks=['LE','RE','N','LM','RM','ALL'];
         # im_paths,gt_pt_files,pred_pt_files=viz.us_getFilePres(test_file,test_dir,post_us,num_iter,batch_size);
         colors=[];
         failures_all=[];
         labels=[];
         for key_curr in to_include:
             test_dir_curr,color=test_dirs_dict[key_curr];
-            if key_curr=='tif':
+            if key_curr.startswith('tif'):
                 errors_curr=viz.them_getErrorsAll(test_dir_curr[0],test_dir_curr[1]);
             else:    
                 errors_curr=viz.us_getErrorsAll(test_file,test_dir_curr,post_us,num_iter,batch_size);
@@ -1323,7 +1386,17 @@ def makeThreshCurves():
     # to_include=['ours','bl_tps','bl_ft','scratch'];post='sheep';data_type='Sheep'
     # to_include=['ours','tif'];post='horse_tif';data_type='Horse';
     # to_include=['ours','tif'];post='sheep_tif';data_type='Sheep';
-    to_include_all=[(['ours','bl_tps','bl_ft','scratch'],'horse','Horse'),(['ours','bl_tps','bl_ft','scratch'],'sheep','Sheep'),(['ours','tif'],'horse_tif','Horse'),(['ours','tif'],'sheep_tif','Sheep')];
+    
+    # to_include_all=[(['ours','bl_tps','bl_ft','scratch'],'horse','Horse'),(['ours','bl_tps','bl_ft','scratch'],'sheep','Sheep'),(['ours','tif'],'horse_tif','Horse'),(['ours','tif'],'sheep_tif','Sheep')];
+
+    to_include_all=[\
+    ([b+a for a in ['','_buffer'] for b in ['last','add'] ],'sheep_8_buffer','Sheep'),\
+    (['last_buffer','tif_buffer' ],'sheep_8_buffer_tif_buffer','Sheep'),\
+    (['last_buffer','tif' ],'sheep_8_buffer_tif','Sheep')]
+
+    # to_include_all=[(['ours','bl_tps','bl_ft','scratch'],'horse','Horse'),(['ours','bl_tps','bl_ft','scratch'],'sheep','Sheep'),(['ours','tif'],'horse_tif','Horse'),(['ours','tif'],'sheep_tif','Sheep')];
+
+
 
     for to_include,post,data_type in to_include_all:
     # to_include=['ours','ours_random'];post='horse';data_type='Horse';
@@ -1372,12 +1445,58 @@ def makeThreshCurves():
             test_file=os.path.join(dir_meta,'files_for_sheepCode/sheep_test_us_sheep_minloss.txt');
             num_iter=2;
             batch_size=50;
+        elif post=='sheep_8_buffer':
+            dir_meta_curr=os.path.join(dir_meta,'eight_point_experiments');
+            post_buffers=['','_buffer'];
+            test_dirs_dict={};
+            colors=['r','g','b','c','m','y','k','w'];
+            num_curr=-1;
+            print to_include
+            for post_buffer in post_buffers:
+                for scheme in ['last','add']:
+                    if post_buffer=='' and scheme=='last' :
+                        epoch_num='_210';
+                    elif post_buffer=='' and scheme=='add' :
+                        epoch_num='_245';
+                    else: 
+                        epoch_num='';
+
+                    num_curr=num_curr+1;
+                    dir_curr=os.path.join(dir_meta_curr,'ft_'+scheme+'_16'+post_buffer,'test_images'+epoch_num);
+                    key_curr=scheme+post_buffer;
+                    print key_curr;
+                    test_dirs_dict[key_curr]=(dir_curr,colors[num_curr]);
+
+            test_file='../data/sheep_for_eight/matches_5_sheep_test_allKP_minloss_8.txt'
+            num_iter=2;
+            batch_size=50; 
+        elif post.startswith('sheep_8_buffer_tif'):
+
+            dir_meta_curr=os.path.join(dir_meta,'eight_point_experiments');
+            test_pre='matches_5_sheep_test_allKP_minloss_8'
+            if post=='sheep_8_buffer_tif_buffer':
+                post_buffer='_buffer';
+            else:
+                post_buffer='';
+            tif_dir=[os.path.join('../data/sheep_for_eight'+post_buffer,test_pre+'_tif.txt'),\
+                    os.path.join('../data/sheep_for_eight'+post_buffer,test_pre+'_tif_TIF_result.txt')];
+            # them_test=[os.path.join(dir_input_data,file_curr) for file_curr in them_test];
+            # out_them=[file_curr[:file_curr.rindex('.')]+'_TIF_result.txt' for file_curr in them_test];
+            us_tps_dir=os.path.join(dir_meta_curr,'ft_last_16_buffer/test_images');
+            test_dirs_dict={'tif'+post_buffer:(tif_dir,'g'),'last_buffer':(us_tps_dir,'r')};
+            test_file=os.path.join('../data/sheep_for_eight'+post_buffer,test_pre+'.txt');
+            num_iter=2;
+            batch_size=50;
+        
 
 
         threshes=range(0,26);
         threshes=[float(thresh_curr)/100.0 for thresh_curr in threshes];
         post_us=['_gt_pts.npy','_pred_pts.npy']
-        ticks=['LE','RE','N','LM','RM','ALL'];
+        if post.startswith('sheep_8'):
+            ticks=['LTE','LBE','LE','RE','RBE','RTE','N','M','ALL'];
+        else:
+            ticks=['LE','RE','N','LM','RM','ALL'];
 
         errors_all=[];
         curves=[];
@@ -1386,12 +1505,13 @@ def makeThreshCurves():
         # for out_dir_test in dir_results:
         for key_curr in to_include:
             test_dir_curr,color=test_dirs_dict[key_curr];
-            if key_curr=='tif':
+            if key_curr.startswith('tif'):
                 errors_curr=viz.them_getErrorsAll(test_dir_curr[0],test_dir_curr[1]);
             else:
                 errors_curr=viz.us_getErrorsAll(test_file,test_dir_curr,post_us,num_iter,batch_size);
 
-            curve_curr=[[],[],[],[],[],[]];
+            curve_curr=[[] for idx in range(len(ticks))]
+            # ,[],[],[],[],[]];
             for thresh_curr in threshes:
                 failures,failures_kp=viz.getErrRates(errors_curr,thresh_curr)
                 for failure_idx,failure_curr in enumerate([f_curr for f_curr in failures]+[failures_kp]):
@@ -1402,7 +1522,7 @@ def makeThreshCurves():
 
 
         threshes_p=[thresh*100 for thresh in threshes]
-        for curve_idx in range(6):
+        for curve_idx in range(len(ticks)):
             out_file=out_file_pre+ticks[curve_idx]+'.pdf';
             xAndYs=[(threshes_p,curve_curr[curve_idx]) for curve_curr in curves];
 
@@ -1669,13 +1789,15 @@ def makeNeighborsGraph(system):
     print out_file.replace(dir_server,click_str);
 
 def main():
-
+    # makeThreshCurves();
+    makeComparisonBarGraphs()
+    return
     torch_file='train_full_model_sheep.th';
     epoch_size=7;
     train_human='../experiments/data_check/aflw/matches_5_sheep_train_allKP_noIm.txt';
     ft_files=['../models/pretrained_sheep_full_8.dat','../models/pretrained_sheep_full_add_8.dat'];
 
-    post_buffer='_buffer';
+    post_buffer='';
     out_file_sh='../scripts/train_sheep_for_eight'+post_buffer+'.sh';
     train_sheep='../data/sheep_for_eight'+post_buffer+'/matches_5_sheep_train_allKP_8.txt';
     test_sheep='../data/sheep_for_eight'+post_buffer+'/matches_5_sheep_test_allKP_minloss_8.txt';

@@ -3,7 +3,7 @@ import numpy as np;
 matplotlib.use('Agg')
 # matplotlib.use('PS') 
 import matplotlib.pyplot as plt;
-matplotlib.rcParams.update({'font.size': 19})
+matplotlib.rcParams.update({'font.size': 11})
 from matplotlib.backends.backend_pdf import PdfPages
 import os;
 from PIL import Image,ImageDraw,ImageFont;
@@ -192,9 +192,9 @@ def plotSimple(xAndYs,out_file,title='',xlabel='',ylabel='',legend_entries=None,
     for idx_x_y,(x,y) in enumerate(xAndYs):
         if colors is not None:
             color_curr=colors[idx_x_y];
-            handle,=plt.plot(x,y,color_curr,linewidth=5.0);
+            handle,=plt.plot(x,y,color_curr,linewidth=3.0);
         else:
-            handle,=plt.plot(x,y,linewidth=5.0);
+            handle,=plt.plot(x,y,linewidth=3.0);
 
         handles.append(handle);
     if legend_entries is not None:

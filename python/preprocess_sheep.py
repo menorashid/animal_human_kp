@@ -299,9 +299,38 @@ def script_makeTrainTestFiles():
             for split_curr in line_split:
                 assert os.path.exists(split_curr)
 
+def makeTifTrainTest(in_file,out_file):
+
+    lines=util.readLinesFromFile(in_file);
+    tif_lines=[];
+    
+    for line_curr in lines:
+        tif_line_curr=[];
+        line_curr=line_curr.split(' ');
+        # tif_line_curr.append(line_curr[0]);
+        im_curr=cv2.imread(line_curr[0]);
+        tif_line_curr.extend([0,0,im_curr.shape[0],im_curr.shape[1]]);
+        anno=np.load(line_curr[1]);
+        anno=anno[:,:2];
+        anno=np.reshape(anno,(anno.size,));
+        anno=list(anno);
+        tif_line_curr.extend(anno);
+        tif_line_curr=[line_curr[0]]+[str(int(num)) for num in tif_line_curr];
+        tif_lines.append(' '.join(tif_line_curr));
+    print out_file;
+    util.writeFile(out_file,tif_lines);
 
 def main():
-    script_makeTrainTestFiles()
+    dir_meta='../data';
+    post_buffer='_buffer';
+    dir_files=os.path.join(dir_meta,'sheep_for_eight'+post_buffer);
+    in_files=[os.path.join(dir_files,file_curr) for file_curr in os.listdir(dir_files) if file_curr.startswith('matches_5') and file_curr.endswith('.txt') and 'tif' not in file_curr];
+    out_files=[file_curr[:file_curr.rindex('.')]+'_tif.txt' for file_curr in in_files];
+    for in_file,out_file in zip(in_files,out_files):
+        makeTifTrainTest(in_file,out_file);
+
+
+    # script_makeTrainTestFiles()
     # script_saveDataAndVerify()
     # dir_files='../data/sheep_for_eight';
     # train_file=os.path.join(dir_files,'matches_5_sheep_train_allKP_minloss.txt');

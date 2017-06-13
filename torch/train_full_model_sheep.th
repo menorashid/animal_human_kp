@@ -507,7 +507,7 @@ cmd:option('-optimize',false);
 cmd:option('-num_key_points',8);
 cmd:option('-num_key_points_human',5);
 params=cmd:parse(arg)
-train(params);
+-- train(params);
 
 
 
@@ -523,14 +523,21 @@ python_exec_string[#python_exec_string+1]='-iterations';
 python_exec_string[#python_exec_string+1]=2;
 python_exec_string[#python_exec_string+1]='-val_data_path';
 python_exec_string[#python_exec_string+1]=params.val_data_path;
+
+-- python_exec_string[#python_exec_string+1]='-model_path';
+-- python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'final/model_all_final.dat');
+-- python_exec_string[#python_exec_string+1]='-out_dir_images';
+-- python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'test_images');
+
 python_exec_string[#python_exec_string+1]='-model_path';
-python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'final/model_all_final.dat');
--- python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'intermediate/model_all_210.dat');
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'intermediate/model_all_175.dat');
 python_exec_string[#python_exec_string+1]='-out_dir_images';
-python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'test_images');
+python_exec_string[#python_exec_string+1]=paths.concat(params.outDir,'test_images_175');
+
 if params.bgr then
     python_exec_string[#python_exec_string+1]='-bgr';
 end
+
 if params.soumith_locnet then
     python_exec_string[#python_exec_string+1]='-soumith';
     python_exec_string[#python_exec_string+1]='-soumith_mean_file';

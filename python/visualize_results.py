@@ -135,7 +135,7 @@ def readGTFile(file_curr):
     ims_size=[];
     annos_all=[];
     for line_curr in lines:
-        line_split=line_curr.rsplit(None,14);
+        line_split=line_curr.rsplit(None,20);
         im_paths.append(line_split[0]);
         
         im_size=line_split[1:1+4];
